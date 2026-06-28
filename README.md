@@ -38,6 +38,39 @@ To author a new character, copy `templates/CHARACTER_TEMPLATE.md` into your
 character folder and fill in the brackets. `templates/EXAMPLE_CHARACTER_DESCRIPTION.md`
 shows a completed example.
 
+## Create Character Sheets
+
+Each character needs a reference sheet (front, side, three-quarter, full-body, and
+close-up views plus a few expressions) that later stages attach for visual
+consistency. Build the image-generation prompt for each character from its
+description and the `comic-style` house style:
+
+```bash
+python3 scripts/build_character_sheet_prompt.py
+```
+
+This writes one prompt per character to `outputs/character_prompts/<id>.md` plus an
+`index.json`. Each prompt file lists the reference pictures to attach and the full
+reference-sheet prompt. Feed each prompt (with the listed images attached) into any
+image model, then save the result as `charactername_character_sheet.jpg` in the
+character's folder.
+
+- **Photo-based (recommended):** drop source photos into
+  `characters/CharacterName/source/` (or any image in the folder that is not the
+  generated `*_character_sheet.*`). The prompt switches to "reference" mode and asks
+  the model to preserve the real likeness while applying the house style.
+- **Text-only:** with no source photos, the prompt uses the `comic-style` house
+  style to design the character from the written description alone.
+
+Build sheets for specific characters, or attach a shared style reference so a new
+character matches the existing cast:
+
+```bash
+python3 scripts/build_character_sheet_prompt.py \
+  --character Bridget \
+  --style-reference characters/Bridget/bridget_character_sheet.jpg
+```
+
 ## Generate A Story Prompt
 
 ```bash
@@ -62,7 +95,9 @@ The generated prompt asks for JSON matching
 ## Intended Pipeline
 
 ```text
-character descriptions + character sheets
+character description (templates/) + comic-style house style
+  -> character sheet prompt    (scripts/build_character_sheet_prompt.py)
+  -> character reference sheet  (any image model)
   -> story prompt
   -> story JSON
   -> page image prompts
