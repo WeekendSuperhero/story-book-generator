@@ -2,9 +2,9 @@
 """Generate character reference sheets from character descriptions using Gemini.
 
 Mirrors generate_page_images.py: REST-based (no SDK), dry-run by default, and
---send to call the image API. It reuses the prompt assembly from
-build_character_sheet_prompt.py and the comic-style house style, attaching any
-source photos found for the character so the model can match a real likeness.
+--send to call the image API. Each request bundles the character template and the
+comic-style skill alongside the character's own description and any source photos,
+so the model receives the full structure, art direction, and likeness together.
 
 Generated sheets are written into each character folder as
 `<id>_character_sheet.<ext>` and existing sheets are left alone unless
@@ -79,6 +79,18 @@ def build_request(
     }
 
 
+def compose_request_text(template_text: str, skill_text: str, character_prompt: str) -> str:
+    """Bundle the character template and comic-style skill with the character's own
+    prompt so the model receives all three together in the Interactions request."""
+    sections: list[str] = []
+    if template_text:
+        sections.append("# Character template (structure and canon to honor)\n\n" + template_text)
+    if skill_text:
+        sections.append("# Comic-style skill (apply this house style)\n\n" + skill_text)
+    sections.append("# This character — generate the reference sheet\n\n" + character_prompt)
+    return "\n\n---\n\n".join(sections)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--characters-dir", type=Path, default=Path("characters"))
@@ -89,6 +101,7 @@ def parse_args() -> argparse.Namespace:
         help="Character name or id to generate (repeatable). Defaults to all characters.",
     )
     parser.add_argument("--skill", type=Path, default=Path("skills/comic-style/SKILL.md"))
+    parser.add_argument("--template", type=Path, default=Path("templates/CHARACTER_TEMPLATE.md"))
     parser.add_argument(
         "--style-reference",
         type=Path,
@@ -130,6 +143,8 @@ def main() -> None:
         raise FileNotFoundError(f"Style reference not found: {args.style_reference}")
 
     house_style = load_house_style(args.skill)
+    skill_text = args.skill.read_text(encoding="utf-8").strip() if args.skill.exists() else ""
+    template_text = args.template.read_text(encoding="utf-8").strip() if args.template.exists() else ""
     wanted = {slugify(value) for value in args.characters} if args.characters else None
     character_dirs = selected_character_dirs(args.characters_dir, wanted)
     if not character_dirs:
@@ -161,8 +176,9 @@ def main() -> None:
         sections = parse_sections(read_text(description_path))
         references = find_reference_images(character_dir)
         prompt = build_sheet_prompt(name, sections, house_style, references, args.style_reference)
+        request_text = compose_request_text(template_text, skill_text, prompt)
         payload = build_request(
-            prompt,
+            request_text,
             references,
             args.style_reference,
             model=model,

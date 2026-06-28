@@ -61,6 +61,10 @@ Per character:
 5. Open each `characters/<Name>/<id>_character_sheet.jpg` and confirm the views and
    identity are consistent before moving on. Regenerate with `--overwrite` if needed.
 
+Each Interactions API request bundles the character template, the full comic-style
+skill, the character's own description, and the source photos together, so the model
+receives the structure, art direction, and likeness in a single call.
+
 ## Output
 
 `characters/<Name>/<id>_character_sheet.jpg` for every character — the references
