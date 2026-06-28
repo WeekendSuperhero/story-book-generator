@@ -25,6 +25,18 @@ character description (templates/) + comic-style house style
   -> fixed-layout EPUB           (scripts/build_fixed_layout_epub.py)
 ```
 
+## Composed of three skills
+
+This end-to-end flow is the composition of three focused skills you can also run on
+their own:
+
+1. **create-character** (Step 1) — cast details + photos → comic-style reference sheets.
+2. **create-story** (Steps 2–6) — a prompt (cast + story idea) → story JSON → page
+   images, including the cover art.
+3. **publish-story** (Steps 7–8) — assemble and QA the readable EPUB.
+
+The steps below are the full walkthrough; each step notes which script it runs.
+
 ## Prerequisites
 
 - Python 3.11+. No third-party packages (standard library only).

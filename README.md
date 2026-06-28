@@ -8,9 +8,10 @@ It is intentionally generic. A new user can place private files under
 ignored by Git because character descriptions and reference sheets are user
 data.
 
-> **Want the whole book in one guided flow?** The `storybook-builder` skill
-> (`skills/storybook-builder/SKILL.md`) walks an agent through every step below —
-> from character sheets to the finished EPUB.
+> **Want an agent to drive this?** The `storybook-builder` skill
+> (`skills/storybook-builder/SKILL.md`) runs the whole pipeline. It is composed of
+> three focused skills you can also use on their own (under `skills/`):
+> `create-character`, `create-story`, and `publish-story`.
 
 ## Prerequisites
 
