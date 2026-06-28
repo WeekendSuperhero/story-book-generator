@@ -76,7 +76,8 @@ GEMINI_API_KEY=... python3 scripts/generate_character_sheets.py --send --sleep-s
 ```
 
 - `--character Bridget` targets one character; `--overwrite` regenerates an
-  existing sheet; `--force-pro` uses the higher-fidelity model for tricky likeness.
+  existing sheet. Sheets use the `gemini-3-pro-image` model by default (pass
+  `--model gemini-3.1-flash-image` for a faster, cheaper run).
 - `--style-reference characters/Bridget/bridget_character_sheet.jpg` keeps a new
   character visually consistent with the existing cast.
 
@@ -147,8 +148,8 @@ python3 scripts/generate_page_images.py --pages 1 --limit 1
 GEMINI_API_KEY=... python3 scripts/generate_page_images.py --send --sleep-seconds 1
 ```
 
-The script attaches each page's character sheets, auto-switches to the pro model
-for pages with five or more characters, and writes
+The script attaches each page's character sheets, uses the `gemini-3-pro-image`
+model by default (pass `--model gemini-3.1-flash-image` to downgrade), and writes
 `outputs/page_images/page-XXX.jpg` (all pages must share one resolution).
 
 ## Step 7 — Build the EPUB

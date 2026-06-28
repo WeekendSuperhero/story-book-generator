@@ -53,7 +53,8 @@ Per character:
    ```
    - With no `--character`, it processes **every** character folder, so a whole cast
      is created in one run. Existing sheets are skipped unless `--overwrite`.
-   - `--character "Shane"` targets one; `--force-pro` helps difficult likenesses;
+   - `--character "Shane"` targets one; sheets use the `gemini-3-pro-image` model by
+     default (pass `--model gemini-3.1-flash-image` for a faster, cheaper run);
      `--style-reference characters/<Name>/<id>_character_sheet.jpg` keeps a new
      character visually consistent with the existing cast.
 

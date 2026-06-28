@@ -249,7 +249,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--skip-missing-references", action="store_true")
     parser.add_argument("--allow-proxy-auth", action="store_true", help="Allow requests without GEMINI_API_KEY when Antigravity injects the API key header.")
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_PRO_MODEL,
+        help=f"Image model (default: {DEFAULT_PRO_MODEL}). Pass {DEFAULT_MODEL} for a faster, cheaper run.",
+    )
     parser.add_argument("--pro-model", default=DEFAULT_PRO_MODEL)
     parser.add_argument("--force-pro", action="store_true", help="Use --pro-model for every selected page.")
     parser.add_argument("--pro-reference-threshold", type=int, default=5)

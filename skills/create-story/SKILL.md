@@ -54,9 +54,9 @@ From a prompt naming the cast and the story idea, produce `outputs/story.json` a
    python3 scripts/generate_page_images.py --pages 1 --limit 1        # dry-run a single page
    GEMINI_API_KEY=... python3 scripts/generate_page_images.py --send --sleep-seconds 1
    ```
-   The script attaches each page's character sheets, auto-uses the pro model for
-   pages with five or more characters, and writes `outputs/page_images/page-XXX.jpg`
-   (all pages share one resolution).
+   The script attaches each page's character sheets, uses the `gemini-3-pro-image`
+   model by default (pass `--model gemini-3.1-flash-image` to downgrade), and writes
+   `outputs/page_images/page-XXX.jpg` (all pages share one resolution).
 
 ## About the title page
 

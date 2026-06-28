@@ -98,8 +98,9 @@ python3 scripts/generate_character_sheets.py
 GEMINI_API_KEY=... python3 scripts/generate_character_sheets.py --send --sleep-seconds 1
 ```
 
-Use `--character <Name>` to target one, `--overwrite` to regenerate an existing
-sheet, and `--force-pro` for tricky likenesses. Sheets are written to
+Use `--character <Name>` to target one and `--overwrite` to regenerate an existing
+sheet. Sheets use the `gemini-3-pro-image` model by default (pass
+`--model gemini-3.1-flash-image` for a faster, cheaper run) and are written to
 `characters/<Name>/<id>_character_sheet.jpg`. For photo-based likeness, drop source
 photos in `characters/<Name>/source/` first.
 
@@ -204,9 +205,9 @@ outputs/page_images/page-002.jpg
 ...
 ```
 
-The script uses `gemini-3.1-flash-image` by default and automatically switches
-to `gemini-3-pro-image` for pages with five or more visible recurring
-characters.
+The script uses `gemini-3-pro-image` by default for the highest quality. Pass
+`--model gemini-3.1-flash-image` for a faster, cheaper run (it will still upgrade
+to `gemini-3-pro-image` for pages with five or more visible recurring characters).
 
 ## Test In Google Antigravity
 

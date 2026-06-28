@@ -107,9 +107,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Allow requests without GEMINI_API_KEY when Antigravity injects the API key header.",
     )
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_PRO_MODEL,
+        help=f"Image model (default: {DEFAULT_PRO_MODEL}). Pass {DEFAULT_MODEL} for a faster, cheaper run.",
+    )
     parser.add_argument("--pro-model", default=DEFAULT_PRO_MODEL)
-    parser.add_argument("--force-pro", action="store_true", help="Use --pro-model for every character.")
+    parser.add_argument("--force-pro", action="store_true", help="Force --pro-model (already the default).")
     parser.add_argument("--aspect-ratio", default="4:3")
     parser.add_argument("--image-size", default="2K")
     parser.add_argument("--mime-type", default=DEFAULT_MIME_TYPE)
