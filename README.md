@@ -44,6 +44,17 @@ shows a completed example.
 
 ## Create Character Sheets
 
+Start a new character straight from the template:
+
+```bash
+python3 scripts/new_character.py "Shane"
+```
+
+That creates `characters/Shane/SHANE_DESCRIPTION.md` (from
+`templates/CHARACTER_TEMPLATE.md`) and a `characters/Shane/source/` folder for
+reference photos. Fill in the description; the `comic-style` skill supplies the art
+style applied at generation time.
+
 Each character needs a reference sheet (front, side, three-quarter, full-body, and
 close-up views plus a few expressions) that later stages attach for visual
 consistency. Build the image-generation prompt for each character from its

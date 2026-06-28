@@ -39,10 +39,16 @@ git-ignored (private inputs and generated artifacts).
 
 ## Step 1 — Create character reference sheets
 
-Make sure every character has a description. To add one, copy
-`templates/CHARACTER_TEMPLATE.md` to `characters/<Name>/<NAME>_DESCRIPTION.md` and
-fill in the brackets; `templates/EXAMPLE_CHARACTER_DESCRIPTION.md` is a worked
-example. The `comic-style` skill defines the house art style.
+Make sure every character has a description. To start a new one from the template:
+
+```bash
+python3 scripts/new_character.py "Shane"
+```
+
+That scaffolds `characters/Shane/SHANE_DESCRIPTION.md` (from
+`templates/CHARACTER_TEMPLATE.md`) and `characters/Shane/source/`. Fill in the
+description (`templates/EXAMPLE_CHARACTER_DESCRIPTION.md` is a worked example); the
+`comic-style` skill supplies the house art style at generation time.
 
 Dry run first (writes redacted request JSON, skips characters that already have a
 sheet):
