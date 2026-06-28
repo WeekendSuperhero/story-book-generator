@@ -142,8 +142,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--pro-model", default=DEFAULT_PRO_MODEL)
     parser.add_argument("--force-pro", action="store_true", help="Force --pro-model (already the default).")
-    parser.add_argument("--aspect-ratio", default="4:3")
-    parser.add_argument("--image-size", default="2K")
+    parser.add_argument("--aspect-ratio", default="16:9")
+    parser.add_argument("--image-size", default="4K")
     parser.add_argument("--mime-type", default=DEFAULT_MIME_TYPE)
     parser.add_argument(
         "--thinking-level",

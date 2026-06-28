@@ -32,7 +32,7 @@ DEFAULT_MIME_TYPE = "image/jpeg"
 
 PAGE_SYSTEM_INSTRUCTION = (
     "You generate full-page fixed-layout children's book illustrations.\n"
-    "Target format: landscape 4:3 image for a 1600x1200 fixed-layout EPUB page.\n"
+    "Target format: landscape 16:9 image at 4K for a fixed-layout EPUB page.\n"
     "Do not render any story text, page numbers, signs, labels, captions, speech "
     "bubbles, or readable letters in the image.\n"
     "The EPUB generator will place live HTML text over the reserved space later.\n"
@@ -272,8 +272,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pro-model", default=DEFAULT_PRO_MODEL)
     parser.add_argument("--force-pro", action="store_true", help="Use --pro-model for every selected page.")
     parser.add_argument("--pro-reference-threshold", type=int, default=5)
-    parser.add_argument("--aspect-ratio", default="4:3")
-    parser.add_argument("--image-size", default="2K")
+    parser.add_argument("--aspect-ratio", default="16:9")
+    parser.add_argument("--image-size", default="4K")
     parser.add_argument("--mime-type", default=DEFAULT_MIME_TYPE)
     parser.add_argument(
         "--store",

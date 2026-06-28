@@ -8,8 +8,8 @@
   "pageCount": 24,
   "targetWordCount": 1350,
   "canvas": {
-    "width": 1600,
-    "height": 1200,
+    "width": 3840,
+    "height": 2160,
     "orientation": "landscape"
   },
   "textLayout": {
