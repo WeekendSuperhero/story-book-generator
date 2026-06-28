@@ -1,14 +1,12 @@
 ---
 name: create-character
 description: >
-  Create one or more storybook characters from template information plus optional
-  reference photos, producing comic-style character reference sheets. Input is the
-  character details that fill templates/CHARACTER_TEMPLATE.md (name, age, skin tone,
-  hair, eyes, distinctive feature, canonical outfit, proportions) and any reference
-  pictures for likeness. Use when the user wants to create or add a character, build
-  a cast, or turn a person/photo into a storybook character. Builds on the
-  comic-style skill and the character scripts. Requires a GEMINI_API_KEY to render
-  sheets.
+  Create one or more storybook characters from basic facts plus reference photos.
+  gemini-3.1-pro-preview fills templates/CHARACTER_TEMPLATE.md from the photos to
+  generate the character description (the canon), then the comic-style reference sheet
+  is rendered from it. Use when the user wants to create or add a character, build a
+  cast, or turn a person/photo into a storybook character. Builds on the comic-style
+  skill and the character scripts. Requires a GEMINI_API_KEY.
 ---
 
 # Create Character
@@ -21,9 +19,11 @@ one pass.
 
 Per character:
 - **Name** — becomes the folder name.
-- **Details** for the template — approximate age, skin tone, hair, eyes, a
-  distinctive visual anchor, canonical outfit, and proportion notes.
-- **Reference photos** (optional, recommended) — for a real likeness.
+- **Basic facts** — at least age (plus height/birthday if known), and anything else
+  you want fixed.
+- **Reference photos** (recommended) — the model derives skin tone, hair, eyes,
+  distinctive features, and proportions from these. Without photos, provide those
+  visual details yourself.
 
 ## Steps (repeat per character, or batch them)
 
@@ -34,17 +34,27 @@ Per character:
    Creates `characters/Shane/SHANE_DESCRIPTION.md` (from
    `templates/CHARACTER_TEMPLATE.md`) and `characters/Shane/source/`.
 
-2. Fill in the description. Map the input details into sections 1–4 and, most
-   importantly, section **7. Reference Sheet Instruction** — the generator uses that
-   line verbatim as the image prompt. The `comic-style` skill supplies the house art
-   style automatically at generation time, so you don't need to restate it.
-
-3. If photos were provided, copy them in:
+2. Add the reference photos:
    ```bash
    cp /path/to/photos/*.jpg characters/Shane/source/
    ```
-   Any image in `source/` switches that character to photo-based "reference" mode
-   (preserve the real likeness, then apply the house style).
+
+3. Generate the description with `gemini-3.1-pro-preview`. Send the **same** inputs we
+   already use for the sheet — the blank template + `comic-style` skill in
+   `system_instruction`, and the basic facts + `source/` photos in the input — but with
+   a text model and an instruction to *fill the template from the photos* (text output,
+   not an image). Save the result over `characters/Shane/SHANE_DESCRIPTION.md`. This is
+   the canon the sheet and pages reuse, so skim it before continuing.
+
+   Interactions request:
+   - `model`: `gemini-3.1-pro-preview`
+   - `system_instruction`: "You are a character designer. Fill the character template
+     below from the attached photos and facts; derive the art-style section from the
+     comic-style skill." + the blank `CHARACTER_TEMPLATE.md` + the `comic-style` skill
+   - `input`: the basic facts (name, age, height, …) + each `source/` photo as an image block
+   - `store: false`; read the filled template from `output_text`
+
+   With no photos, write the details into the template by hand instead.
 
 4. Generate the sheet(s) — dry-run first (no API cost), then send:
    ```bash
@@ -61,11 +71,12 @@ Per character:
 5. Open each `characters/<Name>/<id>_character_sheet.jpg` and confirm the views and
    identity are consistent before moving on. Regenerate with `--overwrite` if needed.
 
-Each Interactions API request puts the character template and the full comic-style
-skill in `system_instruction`, with the character's own description and source photos
-in the input. Requests run with `thinking_level=high` (override with
-`--thinking-level minimal`) so the reasoning-driven model plans before rendering, and
-`store=false` (override with `--store`) so personal photos are not retained
+Both steps use the same Interactions API pattern — the character template and the full
+`comic-style` skill in `system_instruction`, the reference photos in the input — so
+generating the description (step 3) is just a prompt + model swap
+(`gemini-3.1-pro-preview`, text output) over the inputs we already send. The image step
+adds `thinking_level=high` (override with `--thinking-level minimal`); every request
+uses `store=false` (override with `--store`) so personal photos are not retained
 server-side.
 
 ## Output
