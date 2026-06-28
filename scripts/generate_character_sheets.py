@@ -5,6 +5,8 @@ Mirrors generate_page_images.py: REST-based (no SDK), dry-run by default, and
 --send to call the image API. Each request bundles the character template and the
 comic-style skill alongside the character's own description and any source photos,
 so the model receives the full structure, art direction, and likeness together.
+Requests set thinking_level=high so the reasoning-driven image model plans the
+composition and labeled views before rendering.
 
 Generated sheets are written into each character folder as
 `<id>_character_sheet.<ext>` and existing sheets are left alone unless
@@ -60,6 +62,7 @@ def build_request(
     aspect_ratio: str,
     image_size: str,
     mime_type: str,
+    thinking_level: str,
 ) -> dict[str, Any]:
     input_blocks: list[dict[str, str]] = [{"type": "text", "text": prompt}]
     for path in references:
@@ -70,6 +73,8 @@ def build_request(
     return {
         "model": model,
         "input": input_blocks,
+        # Let the reasoning-driven image model plan the composition before rendering.
+        "generation_config": {"thinking_level": thinking_level},
         "response_format": {
             "type": "image",
             "mime_type": mime_type,
@@ -130,6 +135,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--aspect-ratio", default="4:3")
     parser.add_argument("--image-size", default="2K")
     parser.add_argument("--mime-type", default=DEFAULT_MIME_TYPE)
+    parser.add_argument(
+        "--thinking-level",
+        choices=["minimal", "high"],
+        default="high",
+        help="How much the model reasons before rendering (image models support minimal|high). Default: high.",
+    )
     parser.add_argument("--sleep-seconds", type=float, default=0.0)
     return parser.parse_args()
 
@@ -185,6 +196,7 @@ def main() -> None:
             aspect_ratio=args.aspect_ratio,
             image_size=args.image_size,
             mime_type=args.mime_type,
+            thinking_level=args.thinking_level,
         )
         write_dry_run_request(request_path, payload)
 

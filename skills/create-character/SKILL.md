@@ -63,7 +63,9 @@ Per character:
 
 Each Interactions API request bundles the character template, the full comic-style
 skill, the character's own description, and the source photos together, so the model
-receives the structure, art direction, and likeness in a single call.
+receives the structure, art direction, and likeness in a single call. Requests run
+with `thinking_level=high` (override with `--thinking-level minimal`) so the
+reasoning-driven model plans the composition and labeled views before rendering.
 
 ## Output
 
