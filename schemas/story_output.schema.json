@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/story_output.schema.json",
+  "title": "Fixed-layout children's book story output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["book", "charactersUsed", "styleGuide", "pages"],
+  "properties": {
+    "book": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "subtitle",
+        "targetAgeRange",
+        "targetReadTimeMinutes",
+        "targetWordCount",
+        "actualWordCount",
+        "pageCount",
+        "summary",
+        "theme",
+        "coreLesson",
+        "tone"
+      ],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "subtitle": { "type": "string" },
+        "targetAgeRange": { "type": "string", "minLength": 1 },
+        "targetReadTimeMinutes": { "type": "integer", "enum": [5, 10] },
+        "targetWordCount": { "type": "integer", "minimum": 1 },
+        "actualWordCount": { "type": "integer", "minimum": 1 },
+        "pageCount": { "type": "integer", "minimum": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "theme": { "type": "string" },
+        "coreLesson": { "type": "string" },
+        "tone": { "type": "string" }
+      }
+    },
+    "textStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fontFamily": { "type": "string" },
+        "fontWeight": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "integer" }
+          ]
+        },
+        "lightColor": { "type": "string" },
+        "darkColor": { "type": "string" },
+        "defaultColor": { "type": "string" }
+      }
+    },
+    "charactersUsed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "role", "description", "referenceSheet"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+          "name": { "type": "string", "minLength": 1 },
+          "role": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "referenceSheet": { "type": "string" }
+        }
+      }
+    },
+    "styleGuide": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["visualStyle", "textRenderingRule", "continuityRule"],
+      "properties": {
+        "visualStyle": { "type": "string", "minLength": 1 },
+        "textRenderingRule": { "type": "string", "minLength": 1 },
+        "continuityRule": { "type": "string", "minLength": 1 }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pageNumber",
+          "storyText",
+          "wordCount",
+          "textZone",
+          "textPlacement",
+          "charactersPresent",
+          "illustrationPrompt",
+          "imageNegativePrompt",
+          "negativeSpaceInstruction",
+          "accessibilityAltText",
+          "continuityNotes"
+        ],
+        "properties": {
+          "pageNumber": { "type": "integer", "minimum": 1 },
+          "storyText": { "type": "string", "minLength": 1 },
+          "wordCount": { "type": "integer", "minimum": 1 },
+          "textZone": {
+            "type": "string",
+            "enum": ["bottom", "top", "left", "right", "center"]
+          },
+          "textPlacement": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "xPercent",
+              "yPercent",
+              "widthPercent",
+              "heightPercent",
+              "textAlign",
+              "verticalAlign",
+              "fontRole",
+              "colorRecommendation"
+            ],
+            "properties": {
+              "xPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+              "yPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+              "widthPercent": { "type": "number", "minimum": 1, "maximum": 100 },
+              "heightPercent": { "type": "number", "minimum": 1, "maximum": 100 },
+              "textAlign": {
+                "type": "string",
+                "enum": ["left", "center", "right"]
+              },
+              "verticalAlign": {
+                "type": "string",
+                "enum": ["top", "middle", "bottom"]
+              },
+              "fontRole": {
+                "type": "string",
+                "enum": ["title", "body", "caption", "small"]
+              },
+              "colorRecommendation": { "type": "string" }
+            }
+          },
+          "charactersPresent": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "name",
+                "expression",
+                "pose",
+                "action",
+                "referenceSheet"
+              ],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+                "name": { "type": "string", "minLength": 1 },
+                "expression": { "type": "string", "minLength": 1 },
+                "pose": { "type": "string", "minLength": 1 },
+                "action": { "type": "string", "minLength": 1 },
+                "referenceSheet": { "type": "string" }
+              }
+            }
+          },
+          "illustrationPrompt": { "type": "string", "minLength": 1 },
+          "imageNegativePrompt": { "type": "string", "minLength": 1 },
+          "negativeSpaceInstruction": { "type": "string", "minLength": 1 },
+          "accessibilityAltText": { "type": "string", "minLength": 1 },
+          "textColor": { "type": "string" },
+          "continuityNotes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

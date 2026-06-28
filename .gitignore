@@ -1,0 +1,16 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Local secrets/config
+.env
+.env.*
+
+# Local/private character inputs
+characters/*
+!characters/README.md
+
+# Generated book artifacts
+outputs/

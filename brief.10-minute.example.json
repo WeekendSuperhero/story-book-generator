@@ -1,0 +1,33 @@
+{
+  "targetReadTimeMinutes": 10,
+  "targetAgeRange": "4-8",
+  "theme": "A warm family adventure about imagination, courage, and helping each other.",
+  "setting": "A cozy home, a backyard, and a magical nighttime sky.",
+  "tone": "Warm, playful, gentle, emotionally satisfying.",
+  "coreLesson": "Big feelings become smaller when a family solves problems together.",
+  "pageCount": 24,
+  "targetWordCount": 1350,
+  "canvas": {
+    "width": 1600,
+    "height": 1200,
+    "orientation": "landscape"
+  },
+  "textLayout": {
+    "defaultZone": "bottom",
+    "allowedZones": ["bottom", "top", "left", "right"],
+    "reservedSpacePercent": 25,
+    "liveTextRequired": true
+  },
+  "storyConstraints": {
+    "rhyme": false,
+    "scaryContent": false,
+    "includePageNumbers": true,
+    "readAloud": true
+  },
+  "characterSelection": {
+    "includeCharacterIds": [],
+    "protagonistIds": [],
+    "supportingCharacterIds": []
+  },
+  "notes": "Use the loaded character canon. If includeCharacterIds is empty, choose the best cast from the available characters."
+}
