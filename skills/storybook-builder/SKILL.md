@@ -58,9 +58,12 @@ python3 scripts/new_character.py "Shane"
 ```
 
 That scaffolds `characters/Shane/SHANE_DESCRIPTION.md` (from
-`templates/CHARACTER_TEMPLATE.md`) and `characters/Shane/source/`. Fill in the
-description (`templates/EXAMPLE_CHARACTER_DESCRIPTION.md` is a worked example); the
-`comic-style` skill supplies the house art style at generation time.
+`templates/CHARACTER_TEMPLATE.md`) and `characters/Shane/source/`. Drop the reference
+photos into `source/`, then **generate** the description with `gemini-3.1-pro-preview`
+— it fills the template from the photos (see the `create-character` skill for the exact
+request). With no photos, fill the template by hand
+(`templates/EXAMPLE_CHARACTER_DESCRIPTION.md` is a worked example). The `comic-style`
+skill supplies the house art style at sheet-generation time.
 
 Dry run first (writes redacted request JSON, skips characters that already have a
 sheet):
