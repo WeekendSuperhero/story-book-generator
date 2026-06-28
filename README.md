@@ -8,6 +8,10 @@ It is intentionally generic. A new user can place private files under
 ignored by Git because character descriptions and reference sheets are user
 data.
 
+> **Want the whole book in one guided flow?** The `storybook-builder` skill
+> (`skills/storybook-builder/SKILL.md`) walks an agent through every step below —
+> from character sheets to the finished EPUB.
+
 ## Prerequisites
 
 - **Python 3.11+** (the scripts use `datetime.UTC` and other 3.11 features).
@@ -70,6 +74,22 @@ python3 scripts/build_character_sheet_prompt.py \
   --character Bridget \
   --style-reference characters/Bridget/bridget_character_sheet.jpg
 ```
+
+### Generate The Sheets
+
+To generate the sheet images directly with Gemini (instead of pasting prompts into
+another tool), use the companion script. Dry-run first (it skips characters that
+already have a sheet), then send:
+
+```bash
+python3 scripts/generate_character_sheets.py
+GEMINI_API_KEY=... python3 scripts/generate_character_sheets.py --send --sleep-seconds 1
+```
+
+Use `--character <Name>` to target one, `--overwrite` to regenerate an existing
+sheet, and `--force-pro` for tricky likenesses. Sheets are written to
+`characters/<Name>/<id>_character_sheet.jpg`. For photo-based likeness, drop source
+photos in `characters/<Name>/source/` first.
 
 ## Generate A Story Prompt
 
