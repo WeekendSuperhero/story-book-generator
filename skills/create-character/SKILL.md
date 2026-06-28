@@ -61,11 +61,12 @@ Per character:
 5. Open each `characters/<Name>/<id>_character_sheet.jpg` and confirm the views and
    identity are consistent before moving on. Regenerate with `--overwrite` if needed.
 
-Each Interactions API request bundles the character template, the full comic-style
-skill, the character's own description, and the source photos together, so the model
-receives the structure, art direction, and likeness in a single call. Requests run
-with `thinking_level=high` (override with `--thinking-level minimal`) so the
-reasoning-driven model plans the composition and labeled views before rendering.
+Each Interactions API request puts the character template and the full comic-style
+skill in `system_instruction`, with the character's own description and source photos
+in the input. Requests run with `thinking_level=high` (override with
+`--thinking-level minimal`) so the reasoning-driven model plans before rendering, and
+`store=false` (override with `--store`) so personal photos are not retained
+server-side.
 
 ## Output
 

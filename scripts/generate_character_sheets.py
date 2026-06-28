@@ -2,11 +2,11 @@
 """Generate character reference sheets from character descriptions using Gemini.
 
 Mirrors generate_page_images.py: REST-based (no SDK), dry-run by default, and
---send to call the image API. Each request bundles the character template and the
-comic-style skill alongside the character's own description and any source photos,
-so the model receives the full structure, art direction, and likeness together.
-Requests set thinking_level=high so the reasoning-driven image model plans the
-composition and labeled views before rendering.
+--send to call the image API. The character template and comic-style skill go in the
+request's system_instruction; the character's own description and any source photos
+go in the input. Requests set thinking_level=high so the reasoning-driven image model
+plans the composition before rendering, and store=false so personal photos are not
+retained server-side.
 
 Generated sheets are written into each character folder as
 `<id>_character_sheet.<ext>` and existing sheets are left alone unless
@@ -63,6 +63,8 @@ def build_request(
     image_size: str,
     mime_type: str,
     thinking_level: str,
+    system_instruction: str,
+    store: bool,
 ) -> dict[str, Any]:
     input_blocks: list[dict[str, str]] = [{"type": "text", "text": prompt}]
     for path in references:
@@ -70,9 +72,11 @@ def build_request(
     if style_reference is not None:
         input_blocks.append(encode_image(style_reference))
 
-    return {
+    payload: dict[str, Any] = {
         "model": model,
         "input": input_blocks,
+        # Opt out of server-side retention; requests carry personal photos.
+        "store": store,
         # Let the reasoning-driven image model plan the composition before rendering.
         "generation_config": {"thinking_level": thinking_level},
         "response_format": {
@@ -82,17 +86,23 @@ def build_request(
             "image_size": image_size,
         },
     }
+    if system_instruction:
+        payload["system_instruction"] = system_instruction
+    return payload
 
 
-def compose_request_text(template_text: str, skill_text: str, character_prompt: str) -> str:
-    """Bundle the character template and comic-style skill with the character's own
-    prompt so the model receives all three together in the Interactions request."""
-    sections: list[str] = []
+def compose_system_instruction(template_text: str, skill_text: str) -> str:
+    """Governing context for the model: the character template structure and the
+    comic-style skill. The specific character's details and photos go in the input."""
+    sections: list[str] = [
+        "You generate character reference sheets for a children's book. Honor the "
+        "character template structure and apply the comic-style art skill below to the "
+        "specific character described in the input."
+    ]
     if template_text:
         sections.append("# Character template (structure and canon to honor)\n\n" + template_text)
     if skill_text:
         sections.append("# Comic-style skill (apply this house style)\n\n" + skill_text)
-    sections.append("# This character — generate the reference sheet\n\n" + character_prompt)
     return "\n\n---\n\n".join(sections)
 
 
@@ -141,6 +151,12 @@ def parse_args() -> argparse.Namespace:
         default="high",
         help="How much the model reasons before rendering (image models support minimal|high). Default: high.",
     )
+    parser.add_argument(
+        "--store",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Store the interaction server-side (default: --no-store for zero retention of personal photos).",
+    )
     parser.add_argument("--sleep-seconds", type=float, default=0.0)
     return parser.parse_args()
 
@@ -156,6 +172,7 @@ def main() -> None:
     house_style = load_house_style(args.skill)
     skill_text = args.skill.read_text(encoding="utf-8").strip() if args.skill.exists() else ""
     template_text = args.template.read_text(encoding="utf-8").strip() if args.template.exists() else ""
+    system_instruction = compose_system_instruction(template_text, skill_text)
     wanted = {slugify(value) for value in args.characters} if args.characters else None
     character_dirs = selected_character_dirs(args.characters_dir, wanted)
     if not character_dirs:
@@ -187,9 +204,8 @@ def main() -> None:
         sections = parse_sections(read_text(description_path))
         references = find_reference_images(character_dir)
         prompt = build_sheet_prompt(name, sections, house_style, references, args.style_reference)
-        request_text = compose_request_text(template_text, skill_text, prompt)
         payload = build_request(
-            request_text,
+            prompt,
             references,
             args.style_reference,
             model=model,
@@ -197,6 +213,8 @@ def main() -> None:
             image_size=args.image_size,
             mime_type=args.mime_type,
             thinking_level=args.thinking_level,
+            system_instruction=system_instruction,
+            store=args.store,
         )
         write_dry_run_request(request_path, payload)
 

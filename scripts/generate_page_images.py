@@ -2,7 +2,10 @@
 """Generate page images from story JSON using Gemini image models.
 
 The script is intentionally REST-based so it can run locally or inside an
-Antigravity Linux sandbox without requiring the Google GenAI SDK.
+Antigravity Linux sandbox without requiring the Google GenAI SDK. The general
+illustration rules go in the request's system_instruction; per-page content goes in
+the input. Requests use store=false so the cast's likenesses are not retained
+server-side.
 """
 
 from __future__ import annotations
@@ -26,6 +29,17 @@ API_URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
 DEFAULT_MODEL = "gemini-3.1-flash-image"
 DEFAULT_PRO_MODEL = "gemini-3-pro-image"
 DEFAULT_MIME_TYPE = "image/jpeg"
+
+PAGE_SYSTEM_INSTRUCTION = (
+    "You generate full-page fixed-layout children's book illustrations.\n"
+    "Target format: landscape 4:3 image for a 1600x1200 fixed-layout EPUB page.\n"
+    "Do not render any story text, page numbers, signs, labels, captions, speech "
+    "bubbles, or readable letters in the image.\n"
+    "The EPUB generator will place live HTML text over the reserved space later.\n"
+    "Use the attached character reference sheets for visual consistency. Preserve "
+    "age, face shape, hairstyle, outfit, proportions, and expression language.\n"
+    "Create a single story scene, not a character sheet or collage."
+)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -111,14 +125,8 @@ def page_prompt(story: dict[str, Any], page: dict[str, Any]) -> str:
 
     return "\n\n".join(
         [
-            "Generate one full-page fixed-layout children's book illustration.",
             f"Book title: {book.get('title', '')}",
             f"Page number: {page.get('pageNumber')}",
-            "Target format: landscape 4:3 image for a 1600x1200 fixed-layout EPUB page.",
-            "Do not render any story text, page numbers, signs, labels, captions, speech bubbles, or readable letters in the image.",
-            "The EPUB generator will place live HTML text over the reserved space later.",
-            "Use the attached character reference sheets for visual consistency. Preserve age, face shape, hairstyle, outfit, proportions, and expression language.",
-            "Create a single story scene, not a character sheet or collage.",
             "Story text for context:",
             page.get("storyText", ""),
             "Characters visible in this image:",
@@ -151,6 +159,8 @@ def build_request(
     image_size: str,
     mime_type: str,
     skip_missing_references: bool,
+    system_instruction: str,
+    store: bool,
 ) -> dict[str, Any]:
     input_blocks: list[dict[str, str]] = [{"type": "text", "text": page_prompt(story, page)}]
 
@@ -166,9 +176,11 @@ def build_request(
             "Missing character reference sheets:\n" + "\n".join(f"- {path}" for path in missing)
         )
 
-    return {
+    payload: dict[str, Any] = {
         "model": model,
         "input": input_blocks,
+        # Opt out of server-side retention; pages carry the cast's likenesses.
+        "store": store,
         "response_format": {
             "type": "image",
             "mime_type": mime_type,
@@ -176,6 +188,9 @@ def build_request(
             "image_size": image_size,
         },
     }
+    if system_instruction:
+        payload["system_instruction"] = system_instruction
+    return payload
 
 
 def post_json(payload: dict[str, Any], api_key: str | None, allow_proxy_auth: bool) -> dict[str, Any]:
@@ -260,6 +275,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--aspect-ratio", default="4:3")
     parser.add_argument("--image-size", default="2K")
     parser.add_argument("--mime-type", default=DEFAULT_MIME_TYPE)
+    parser.add_argument(
+        "--store",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Store the interaction server-side (default: --no-store for zero retention of the cast's likenesses).",
+    )
     parser.add_argument("--sleep-seconds", type=float, default=0.0)
     return parser.parse_args()
 
@@ -314,6 +335,8 @@ def main() -> None:
             image_size=args.image_size,
             mime_type=args.mime_type,
             skip_missing_references=args.skip_missing_references,
+            system_instruction=PAGE_SYSTEM_INSTRUCTION,
+            store=args.store,
         )
         write_dry_run_request(request_path, payload)
 

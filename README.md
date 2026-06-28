@@ -103,8 +103,9 @@ sheet. Sheets use the `gemini-3-pro-image` model by default (pass
 `--model gemini-3.1-flash-image` for a faster, cheaper run) and are written to
 `characters/<Name>/<id>_character_sheet.jpg`. For photo-based likeness, drop source
 photos in `characters/<Name>/source/` first. Requests run with `thinking_level=high`
-by default (override with `--thinking-level minimal`) so the reasoning-driven image
-model plans the composition before rendering.
+by default (override with `--thinking-level minimal`) and `store=false` (override with
+`--store`) so the reasoning-driven model plans before rendering and personal photos
+are not retained server-side.
 
 ## Generate A Story Prompt
 
