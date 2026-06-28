@@ -273,11 +273,12 @@ python3 scripts/build_fixed_layout_epub.py
 To make live text smaller or larger:
 
 ```bash
-python3 scripts/build_fixed_layout_epub.py --max-font-size 44
+python3 scripts/build_fixed_layout_epub.py --max-font-percent 2.6
 ```
 
-The default maximum font size is `48px`; the first EPUB pass used much larger
-text and could overflow in some readers.
+Body text (and the title lockup) scale with the page: the default maximum is `3%` of
+the viewport width — about `48px` on a 1600px page and `~115px` at 4K — so the book
+reads correctly at any resolution. Pass an absolute `--max-font-size <px>` to override.
 
 The default output path is based on the story title:
 

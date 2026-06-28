@@ -539,6 +539,9 @@ def css(viewport_width: int, viewport_height: int, text_style: dict[str, str]) -
     font_family = css_value(text_style["fontFamily"])
     font_weight = css_value(text_style["fontWeight"])
     default_color = css_value(text_style["defaultColor"])
+    title_font = max(1, round(viewport_width * 0.065))
+    subtitle_font = max(1, round(viewport_width * 0.030))
+    title_margin = max(1, round(viewport_width * 0.019))
     return f"""html,
 body {{
   margin: 0;
@@ -627,14 +630,14 @@ body {{
 
 .title-lockup h1 {{
   margin: 0;
-  font-size: 104px;
+  font-size: {title_font}px;
   line-height: 1.05;
   font-weight: 700;
 }}
 
 .title-subtitle {{
-  margin: 30px 0 0;
-  font-size: 48px;
+  margin: {title_margin}px 0 0;
+  font-size: {subtitle_font}px;
   line-height: 1.15;
   font-weight: 500;
 }}
@@ -795,8 +798,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--build-dir", type=Path, default=Path("outputs/epub_build"))
     parser.add_argument("--out", type=Path)
     parser.add_argument("--language", default="en")
-    parser.add_argument("--max-font-size", type=int, default=48)
-    parser.add_argument("--min-font-size", type=int, default=24)
+    parser.add_argument(
+        "--max-font-size",
+        type=int,
+        help="Absolute max body font in px. Overrides --max-font-percent when set.",
+    )
+    parser.add_argument(
+        "--min-font-size",
+        type=int,
+        help="Absolute min body font in px. Overrides --min-font-percent when set.",
+    )
+    parser.add_argument(
+        "--max-font-percent",
+        type=float,
+        default=3.0,
+        help="Max body font as %% of viewport width (default 3.0 = 48px at 1600px, ~115px at 4K).",
+    )
+    parser.add_argument(
+        "--min-font-percent",
+        type=float,
+        default=1.5,
+        help="Min body font as %% of viewport width (default 1.5).",
+    )
     parser.add_argument("--font-scale", type=float, default=1.0)
     parser.add_argument("--font-family")
     parser.add_argument("--font-weight")
@@ -833,6 +856,16 @@ def main() -> None:
     if len(set(sizes)) != 1:
         raise ValueError(f"All page images must have the same dimensions; found {sorted(set(sizes))}")
     viewport_width, viewport_height = sizes[0]
+    max_font_px = (
+        args.max_font_size
+        if args.max_font_size is not None
+        else max(1, round(viewport_width * args.max_font_percent / 100))
+    )
+    min_font_px = (
+        args.min_font_size
+        if args.min_font_size is not None
+        else max(1, round(viewport_width * args.min_font_percent / 100))
+    )
 
     book = story["book"]
     title = str(book["title"])
@@ -910,8 +943,8 @@ def main() -> None:
                 viewport_width,
                 viewport_height,
                 args.language,
-                args.max_font_size,
-                args.min_font_size,
+                max_font_px,
+                min_font_px,
                 args.font_scale,
                 args.use_story_placement,
                 text_style,
