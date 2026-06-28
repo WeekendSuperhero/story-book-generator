@@ -8,6 +8,17 @@ It is intentionally generic. A new user can place private files under
 ignored by Git because character descriptions and reference sheets are user
 data.
 
+## Prerequisites
+
+- **Python 3.11+** (the scripts use `datetime.UTC` and other 3.11 features).
+  No third-party packages are required — every script uses only the Python
+  standard library, so there is nothing to `pip install`.
+- **Optional:** [ImageMagick](https://imagemagick.org) (the `magick` CLI) for the
+  EPUB builder's automatic light/dark text-color selection. Without it, the
+  builder simply falls back to the configured default text color.
+- Image generation additionally needs a `GEMINI_API_KEY` (see
+  [Generate Page Images](#generate-page-images)).
+
 ## Folder Convention
 
 Each character should live in its own folder:
@@ -22,6 +33,10 @@ characters/
 The description file is story and art canon. The character sheet image is not
 embedded into the text prompt, but its path is listed so the image-generation
 stage can attach the right reference sheet for each page.
+
+To author a new character, copy `templates/CHARACTER_TEMPLATE.md` into your
+character folder and fill in the brackets. `templates/EXAMPLE_CHARACTER_DESCRIPTION.md`
+shows a completed example.
 
 ## Generate A Story Prompt
 

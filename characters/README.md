@@ -15,3 +15,6 @@ characters/
 
 Description files define story/art canon. Character sheet images are attached
 later during image generation for visual continuity.
+
+To create one, copy `../templates/CHARACTER_TEMPLATE.md` and fill it in. See
+`../templates/EXAMPLE_CHARACTER_DESCRIPTION.md` for a completed example.
