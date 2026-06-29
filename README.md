@@ -13,6 +13,11 @@ data.
 > three focused skills you can also use on their own (under `skills/`):
 > `create-character`, `create-story`, and `publish-story`.
 
+> **No local setup?** You can run the image pipeline in a Google Antigravity managed
+> environment instead — configure it once and fork it per run (photos uploaded per run
+> via the Files API). See the `antigravity-pipeline` skill and
+> `uv sync --extra antigravity`.
+
 ## Prerequisites
 
 - **Python 3.11+** and **[uv](https://docs.astral.sh/uv/)** (`brew install uv`).
