@@ -34,8 +34,17 @@ data.
 - **Optional:** [ImageMagick](https://imagemagick.org) (the `magick` CLI) for the
   EPUB builder's automatic light/dark text-color selection. Without it, the
   builder simply falls back to the configured default text color.
-- Image generation additionally needs a `GEMINI_API_KEY` (see
-  [Generate Page Images](#generate-page-images)).
+- Image generation needs a **`GEMINI_API_KEY`**. Copy the example env file and add
+  your key (from [AI Studio](https://aistudio.google.com/apikey)):
+
+  ```bash
+  cp .env.example .env          # then edit .env and paste your key
+  uv run --env-file .env scripts/generate_character_sheets.py --send
+  ```
+
+  `.env` is git-ignored. You can also `export GEMINI_API_KEY=...` or prefix a command
+  with `GEMINI_API_KEY=...`. Inside Antigravity the key is proxy-injected, so use
+  `--allow-proxy-auth` instead of setting it.
 
 ## Folder Convention
 
