@@ -48,14 +48,18 @@ def source_photos(characters_dir: Path, name: str) -> list[Path]:
 
 
 def sandbox_task(name: str, repo: str, branch: str, photo_names: list[str], model: str, image_size: str, use_agent: bool) -> str:
-    lines: list[str] = ["Work from the repository root. Report each step and paste errors verbatim."]
+    repo_dir = "/workspace/story-book-generator"
+    lines: list[str] = [
+        f"Run every command from {repo_dir}. Report each step and paste errors verbatim.",
+    ]
     if not use_agent:
         lines += [
             "If uv is missing: pip install --break-system-packages uv.",
-            f"git clone {repo} && cd story-book-generator && git checkout {branch} && uv sync.",
+            f"cd /workspace && git clone {repo} && cd story-book-generator && "
+            f"git checkout {branch} && uv sync.",
         ]
     else:
-        lines.append("cd /workspace/repo  (the persisted base environment already has deps).")
+        lines.append(f"The persisted base environment already has the repo + deps + model at {repo_dir}.")
     if photo_names:
         joined = ", ".join(photo_names)
         lines.append(
