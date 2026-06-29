@@ -52,12 +52,32 @@ def already_processed(originals_dir: Path, stem: str) -> bool:
     return any(path.is_file() and path.stem == stem for path in originals_dir.iterdir())
 
 
-def clean_photo(image_path: Path, out_path: Path, session, jpeg: bool, max_dimension: int | None) -> None:
+def clean_photo(
+    image_path: Path,
+    out_path: Path,
+    session,
+    jpeg: bool,
+    max_dimension: int | None,
+    *,
+    post_process: bool = False,
+    alpha_matting: bool = False,
+    am_foreground: int = 240,
+    am_background: int = 10,
+    am_erode: int = 10,
+) -> None:
     from PIL import Image
     from rembg import remove
 
     image = Image.open(image_path).convert("RGBA")
-    cut = remove(image, session=session)
+    cut = remove(
+        image,
+        session=session,
+        post_process_mask=post_process,
+        alpha_matting=alpha_matting,
+        alpha_matting_foreground_threshold=am_foreground,
+        alpha_matting_background_threshold=am_background,
+        alpha_matting_erode_size=am_erode,
+    )
 
     bbox = cut.getchannel("A").getbbox()
     if bbox:
@@ -99,6 +119,19 @@ def parse_args() -> argparse.Namespace:
         type=int,
         help="Resize so the longest edge is at most this many pixels.",
     )
+    parser.add_argument(
+        "--post-process",
+        action="store_true",
+        help="Clean the mask (rembg post_process_mask) — removes specks/holes.",
+    )
+    parser.add_argument(
+        "--alpha-matting",
+        action="store_true",
+        help="Alpha matting for softer, more accurate edges (slower).",
+    )
+    parser.add_argument("--am-foreground", type=int, default=240, help="Alpha-matting foreground threshold (default 240).")
+    parser.add_argument("--am-background", type=int, default=10, help="Alpha-matting background threshold (default 10).")
+    parser.add_argument("--am-erode", type=int, default=10, help="Alpha-matting erode size (default 10).")
     parser.add_argument(
         "--apply",
         action="store_true",
@@ -149,7 +182,12 @@ def main() -> None:
 
             originals_dir.mkdir(exist_ok=True)
             shutil.copy2(photo, originals_dir / photo.name)
-            clean_photo(photo, out_path, session, args.jpeg, args.max_dimension)
+            clean_photo(
+                photo, out_path, session, args.jpeg, args.max_dimension,
+                post_process=args.post_process, alpha_matting=args.alpha_matting,
+                am_foreground=args.am_foreground, am_background=args.am_background,
+                am_erode=args.am_erode,
+            )
             if out_path != photo and photo.exists():
                 photo.unlink()
             print(f"Cleaned {out_path.name}  (original -> {ORIGINALS_DIRNAME}/{photo.name})")
