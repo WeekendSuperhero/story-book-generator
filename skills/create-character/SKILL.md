@@ -2,7 +2,7 @@
 name: create-character
 description: >
   Create one or more storybook characters from basic facts plus reference photos.
-  gemini-3.1-pro-preview fills templates/CHARACTER_TEMPLATE.md from the photos to
+  gemini-3.5-flash fills templates/CHARACTER_TEMPLATE.md from the photos to
   generate the character description (the canon), then the comic-style reference sheet
   is rendered from it. Use when the user wants to create or add a character, build a
   cast, or turn a person/photo into a storybook character. Builds on the comic-style
@@ -39,7 +39,7 @@ Per character:
    cp /path/to/photos/*.jpg characters/Shane/source/
    ```
 
-3. Generate the description with `gemini-3.1-pro-preview`. Send the **same** inputs we
+3. Generate the description with `gemini-3.5-flash`. Send the **same** inputs we
    already use for the sheet — the blank template + `comic-style` skill in
    `system_instruction`, and the basic facts + `source/` photos in the input — but with
    a text model and an instruction to *fill the template from the photos* (text output,
@@ -47,7 +47,7 @@ Per character:
    the canon the sheet and pages reuse, so skim it before continuing.
 
    Interactions request:
-   - `model`: `gemini-3.1-pro-preview`
+   - `model`: `gemini-3.5-flash`
    - `system_instruction`: "You are a character designer. Fill the character template
      below from the attached photos and facts; derive the art-style section from the
      comic-style skill." + the blank `CHARACTER_TEMPLATE.md` + the `comic-style` skill
@@ -74,7 +74,7 @@ Per character:
 Both steps use the same Interactions API pattern — the character template and the full
 `comic-style` skill in `system_instruction`, the reference photos in the input — so
 generating the description (step 3) is just a prompt + model swap
-(`gemini-3.1-pro-preview`, text output) over the inputs we already send. The image step
+(`gemini-3.5-flash`, text output) over the inputs we already send. The image step
 adds `thinking_level=high` (override with `--thinking-level minimal`); every request
 uses `store=false` (override with `--store`) so personal photos are not retained
 server-side.

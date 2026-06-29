@@ -54,7 +54,7 @@ python3 scripts/new_character.py "Shane"
 That creates `characters/Shane/SHANE_DESCRIPTION.md` (from
 `templates/CHARACTER_TEMPLATE.md`) and a `characters/Shane/source/` folder for
 reference photos. Drop your photos into `source/`, then generate the description with
-`gemini-3.1-pro-preview` (it fills the template from the photos — see the
+`gemini-3.5-flash` (it fills the template from the photos — see the
 `create-character` skill), or fill the template by hand. The `comic-style` skill
 supplies the art style at sheet-generation time.
 

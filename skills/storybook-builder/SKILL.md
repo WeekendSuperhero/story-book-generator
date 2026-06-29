@@ -59,7 +59,7 @@ python3 scripts/new_character.py "Shane"
 
 That scaffolds `characters/Shane/SHANE_DESCRIPTION.md` (from
 `templates/CHARACTER_TEMPLATE.md`) and `characters/Shane/source/`. Drop the reference
-photos into `source/`, then **generate** the description with `gemini-3.1-pro-preview`
+photos into `source/`, then **generate** the description with `gemini-3.5-flash`
 — it fills the template from the photos (see the `create-character` skill for the exact
 request). With no photos, fill the template by hand
 (`templates/EXAMPLE_CHARACTER_DESCRIPTION.md` is a worked example). The `comic-style`
