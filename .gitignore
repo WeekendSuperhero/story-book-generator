@@ -13,6 +13,7 @@ __pycache__/
 # Local/private character inputs
 characters/*
 !characters/README.md
+/source/
 
 # Generated book artifacts
 outputs/
