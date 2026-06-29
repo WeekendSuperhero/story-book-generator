@@ -15,9 +15,17 @@ data.
 
 ## Prerequisites
 
-- **Python 3.11+** (the scripts use `datetime.UTC` and other 3.11 features).
-  No third-party packages are required — every script uses only the Python
-  standard library, so there is nothing to `pip install`.
+- **Python 3.11+** and **[uv](https://docs.astral.sh/uv/)** (`brew install uv`).
+  Install dependencies once — this is the required setup step:
+
+  ```bash
+  uv sync
+  ```
+
+  uv reads `pyproject.toml` + `uv.lock` and provisions the pinned environment, then
+  run scripts with `uv run` (e.g. `uv run scripts/prep_source_photos.py --apply`).
+  The image-generation and EPUB scripts use only the standard library; the
+  third-party deps (rembg + Pillow) are for the source-photo preprocessing step.
 - **Optional:** [ImageMagick](https://imagemagick.org) (the `magick` CLI) for the
   EPUB builder's automatic light/dark text-color selection. Without it, the
   builder simply falls back to the configured default text color.
@@ -53,7 +61,9 @@ python3 scripts/new_character.py "Shane"
 
 That creates `characters/Shane/SHANE_DESCRIPTION.md` (from
 `templates/CHARACTER_TEMPLATE.md`) and a `characters/Shane/source/` folder for
-reference photos. Drop your photos into `source/`, then generate the description with
+reference photos. Drop your photos into `source/` — optionally run
+`uv run scripts/prep_source_photos.py --apply` to background-remove and crop them to
+just the person — then generate the description with
 `gemini-3.5-flash` (it fills the template from the photos — see the
 `create-character` skill), or fill the template by hand. The `comic-style` skill
 supplies the art style at sheet-generation time.

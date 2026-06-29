@@ -34,10 +34,15 @@ Per character:
    Creates `characters/Shane/SHANE_DESCRIPTION.md` (from
    `templates/CHARACTER_TEMPLATE.md`) and `characters/Shane/source/`.
 
-2. Add the reference photos:
+2. Add the reference photos, then clean them (extract the person):
    ```bash
    cp /path/to/photos/*.jpg characters/Shane/source/
+   uv sync                                          # one-time dependency setup
+   uv run scripts/prep_source_photos.py --character "Shane" --apply
    ```
+   This replaces each `source/` photo with a tight person cut-out (originals kept in
+   `source/originals/`, which the generators ignore), giving the model a cleaner
+   subject and smaller files. Skip if you didn't add photos.
 
 3. Generate the description with `gemini-3.5-flash`. Send the **same** inputs we
    already use for the sheet — the blank template + `comic-style` skill in
