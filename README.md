@@ -65,73 +65,35 @@ To author a new character, copy `templates/CHARACTER_TEMPLATE.md` into your
 character folder and fill in the brackets. `templates/EXAMPLE_CHARACTER_DESCRIPTION.md`
 shows a completed example.
 
-## Create Character Sheets
+## Create Characters (two passes)
 
-Start a new character straight from the template:
-
-```bash
-python3 scripts/new_character.py "Shane"
-```
-
-That creates `characters/Shane/SHANE_DESCRIPTION.md` (from
-`templates/CHARACTER_TEMPLATE.md`) and a `characters/Shane/source/` folder for
-reference photos. Drop your photos into `source/` — optionally run
-`uv run scripts/prep_source_photos.py --apply` to background-remove and crop them to
-just the person — then generate the description with
-`gemini-3.5-flash` (it fills the template from the photos — see the
-`create-character` skill), or fill the template by hand. The `comic-style` skill
-supplies the art style at sheet-generation time.
-
-Each character needs a reference sheet (front, side, three-quarter, full-body, and
-close-up views plus a few expressions) that later stages attach for visual
-consistency. Build the image-generation prompt for each character from its
-description and the `comic-style` house style:
+Each character produces **two sheets** — a reference (likeness) and a styles
+(wardrobe) — plus two canon docs (`<NAME>_DESCRIPTION.md`, `<NAME>_STYLES.md`). The
+`create-character` skill drives the full flow; the commands are:
 
 ```bash
-python3 scripts/build_character_sheet_prompt.py
+python3 scripts/new_character.py "Shane"           # scaffold DESCRIPTION + source/
+cp /path/to/photos/*.jpg characters/Shane/source/  # add original photos
+
+# Pass 1 — reference (likeness): isolate the person, then render the reference sheet
+uv run scripts/prep_source_photos.py --character Shane --model birefnet-portrait --out-subdir reference --apply --post-process
+#   gemini-3.5-flash fills SHANE_DESCRIPTION.md from reference/ (see the create-character skill)
+uv run scripts/generate_character_sheets.py --character Shane --send                 # -> shane_character_sheet.jpg
+
+# Pass 2 — styles (wardrobe), fed by the reference: isolate the clothing, then render
+uv run scripts/prep_source_photos.py --character Shane --model u2net_cloth_seg --out-subdir styles --apply
+#   gemini-3.5-flash fills SHANE_STYLES.md from the reference + styles/ (see the create-character skill)
+uv run scripts/generate_character_sheets.py --character Shane --kind styles --send   # -> shane_styles_sheet.jpg
 ```
 
-This writes one prompt per character to `outputs/character_prompts/<id>.md` plus an
-`index.json`. Each prompt file lists the reference pictures to attach and the full
-reference-sheet prompt. Feed each prompt (with the listed images attached) into any
-image model, then save the result as `charactername_character_sheet.jpg` in the
-character's folder.
-
-- **Photo-based (recommended):** drop source photos into
-  `characters/CharacterName/source/` (or any image in the folder that is not the
-  generated `*_character_sheet.*`). The prompt switches to "reference" mode and asks
-  the model to preserve the real likeness while applying the house style.
-- **Text-only:** with no source photos, the prompt uses the `comic-style` house
-  style to design the character from the written description alone.
-
-Build sheets for specific characters, or attach a shared style reference so a new
-character matches the existing cast:
-
-```bash
-python3 scripts/build_character_sheet_prompt.py \
-  --character Bridget \
-  --style-reference characters/Bridget/bridget_character_sheet.jpg
-```
-
-### Generate The Sheets
-
-To generate the sheet images directly with Gemini (instead of pasting prompts into
-another tool), use the companion script. Dry-run first (it skips characters that
-already have a sheet), then send:
-
-```bash
-python3 scripts/generate_character_sheets.py
-GEMINI_API_KEY=... python3 scripts/generate_character_sheets.py --send --sleep-seconds 1
-```
-
-Use `--character <Name>` to target one and `--overwrite` to regenerate an existing
-sheet. Sheets use the `gemini-3-pro-image` model by default (pass
-`--model gemini-3.1-flash-image` for a faster, cheaper run) and are written to
-`characters/<Name>/<id>_character_sheet.jpg`. For photo-based likeness, drop source
-photos in `characters/<Name>/source/` first. Requests run with `thinking_level=high`
-by default (override with `--thinking-level minimal`) and `store=false` (override with
-`--store`) so the reasoning-driven model plans before rendering and personal photos
-are not retained server-side.
+- `source/` originals are never modified; each pass extracts into `reference/` / `styles/`.
+- The `comic-style` house style is injected into every request's `system_instruction`;
+  `CHARACTER_TEMPLATE.md` (Pass 1) and `STYLES_TEMPLATE.md` (Pass 2) define the structure.
+- Sheets default to `gemini-3-pro-image` at 16:9 / 4K, `thinking_level=high`, `store=false`
+  (override with `--model gemini-3.1-flash-image`, `--thinking-level minimal`, `--store`).
+  Omit `--send` for a dry-run preview; with no `--character`, every character is processed.
+- `scripts/build_character_sheet_prompt.py` emits the reference prompt as Markdown if you
+  prefer to paste it into another image tool.
 
 ## Generate A Story Prompt
 

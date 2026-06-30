@@ -20,6 +20,10 @@ that ready environment for every run — nothing heavy installs on the local mac
 > as the base agent. Confirm the exact SDK call signatures against the official docs
 > (linked below) — this skill encodes the *project-specific* recipe, not the full API.
 
+_Automated by `scripts/run_antigravity_pipeline.py`. A persisted base agent
+`storybook-image-env` (repo + `uv sync` + warmed model, cloned at
+`/workspace/story-book-generator`) can be forked per run via `--agent-id`._
+
 ## Prerequisites
 
 - Antigravity managed-agents (preview) access on the key, and a `GEMINI_API_KEY`.
@@ -44,11 +48,11 @@ boot = client.interactions.create(
         "sources": [{
             "type": "repository",
             "source": "https://github.com/WeekendSuperhero/story-book-generator",
-            "target": "/workspace/repo",
+            "target": "/workspace/story-book-generator",
         }],
     },
     input=(
-        "cd /workspace/repo && uv sync && "
+        "cd /workspace/story-book-generator && uv sync && "
         "uv run python -c \"from rembg import new_session; new_session('u2net_human_seg')\" "
         "&& echo CONFIGURED"
     ),
@@ -64,7 +68,7 @@ env_id = boot.environment_id
 agent = client.agents.create(
     id="storybook-image-env",
     base_agent="antigravity-preview-05-2026",
-    system_instruction="You run the story-book-generator pipeline in /workspace/repo.",
+    system_instruction="You run the story-book-generator pipeline in /workspace/story-book-generator.",
     base_environment=env_id,   # fork this fully-configured snapshot every run
 )
 ```
@@ -99,7 +103,7 @@ run = client.interactions.create(
         {"type": "image", "file_uri": photo.uri, "mime_type": photo.mime_type},
         {"type": "text", "text": (
             "Save the attached photo to characters/Shane/source/shane1.jpg, then from "
-            "/workspace/repo run:\n"
+            "/workspace/story-book-generator run:\n"
             "  uv run scripts/prep_source_photos.py --character Shane --apply\n"
             "  env -u GEMINI_API_KEY uv run scripts/generate_character_sheets.py "
             "--character Shane --send --allow-proxy-auth --overwrite\n"
@@ -123,11 +127,11 @@ Notes that make this work:
   transform header, so no key is written into the sandbox.
 - `store=false` is already the default on the image requests (no server-side retention).
 - For page images, run `scripts/generate_page_images.py --send --allow-proxy-auth`
-  the same way (the story JSON + sheets must already be in `/workspace/repo`).
+  the same way (the story JSON + sheets must already be in `/workspace/story-book-generator`).
 
 ## Step 4 — Retrieve outputs
 
-The agent writes results under `/workspace/repo/...` (e.g.
+The agent writes results under `/workspace/story-book-generator/...` (e.g.
 `characters/Shane/shane_character_sheet.jpg`, `outputs/<title>.epub`). Download them
 from the sandbox (per the Managed Agents Quickstart) into the local repo so the rest
 of the pipeline (or your review) can use them.

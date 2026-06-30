@@ -31,6 +31,15 @@ When no reference illustration is provided, apply this complete artistic style:
 - **Fidelity**: Faithfully preserve the subject's exact pose, facial expression, hair, clothing, accessories, and any objects (e.g. drinks) from the input photo. Maintain realistic proportions overall while applying the stylized aesthetic.
 - **Quality**: High detail, clean lines. No photorealism.
 
+## Use in this project
+
+In the story-book-generator pipeline this **Defined House Style** is the source of art
+truth: `scripts/build_character_sheet_prompt.py` (`load_house_style()`) extracts it, and
+the generators (`generate_character_sheets.py`, `generate_page_images.py`) place it in
+the Gemini **Interactions API** request's `system_instruction` — so every reference
+sheet, styles sheet, and page image shares it. The `image_edit` / manual modes below
+describe standalone use of this skill outside that pipeline.
+
 ## Usage Modes
 
 ### Mode 1: Reference Illustration (Recommended)

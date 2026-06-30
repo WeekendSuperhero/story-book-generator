@@ -49,7 +49,7 @@ The steps below are the full walkthrough; each step notes which script it runs.
 Run every command from the repository root. `characters/` and `outputs/` are
 git-ignored (private inputs and generated artifacts).
 
-## Step 1 — Create character reference sheets
+## Step 1 — Create characters (two passes: reference + styles)
 
 Make sure every character has a description. To start a new one from the template:
 
@@ -84,8 +84,16 @@ GEMINI_API_KEY=... python3 scripts/generate_character_sheets.py --send --sleep-s
 - `--style-reference characters/Bridget/bridget_character_sheet.jpg` keeps a new
   character visually consistent with the existing cast.
 
-Result: `characters/<Name>/<id>_character_sheet.jpg`. Open each sheet and confirm
-the views and identity are consistent before continuing.
+Then run **Pass 2 (styles)** to add a wardrobe sheet:
+
+```bash
+uv run scripts/prep_source_photos.py --character Bridget --model u2net_cloth_seg --out-subdir styles --apply
+GEMINI_API_KEY=... uv run scripts/generate_character_sheets.py --character Bridget --kind styles --send
+```
+
+Result per character: `<id>_character_sheet.jpg` (reference) + `<id>_styles_sheet.jpg`
+(styles). See the **create-character** skill for the full two-pass flow. Open both and
+confirm identity is consistent before continuing.
 
 ## Step 2 — Write the brief
 
