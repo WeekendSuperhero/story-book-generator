@@ -133,9 +133,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--am-background", type=int, default=10, help="Alpha-matting background threshold (default 10).")
     parser.add_argument("--am-erode", type=int, default=10, help="Alpha-matting erode size (default 10).")
     parser.add_argument(
+        "--out-subdir",
+        help="Two-pass mode: read source/ and write cutouts to characters/<Name>/<DIR>/, "
+             "leaving source/ originals untouched. E.g. --model birefnet-portrait "
+             "--out-subdir reference, then --model u2net_cloth_seg --out-subdir styles.",
+    )
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing cutouts.")
+    parser.add_argument(
         "--apply",
         action="store_true",
-        help="Actually process photos and move originals. Without it, print the plan only.",
+        help="Actually process photos (and, in default mode, archive originals). Without it, print the plan only.",
     )
     return parser.parse_args()
 
@@ -169,28 +176,38 @@ def main() -> None:
         if not source_dir.is_dir():
             continue
         originals_dir = source_dir / ORIGINALS_DIRNAME
+        target_dir = (character_dir / args.out_subdir) if args.out_subdir else source_dir
 
         for photo in source_photos(source_dir):
-            if already_processed(originals_dir, photo.stem):
+            out_path = target_dir / f"{photo.stem}.{extension}"
+
+            if args.out_subdir:
+                if out_path.exists() and not args.overwrite:
+                    continue
+            elif already_processed(originals_dir, photo.stem):
                 continue
-            out_path = source_dir / f"{photo.stem}.{extension}"
+
             planned += 1
+            dest = f"{args.out_subdir}/{out_path.name}" if args.out_subdir else out_path.name
 
             if not args.apply:
-                print(f"[plan] {photo.name} -> {out_path.name}  (original -> {ORIGINALS_DIRNAME}/{photo.name})")
+                note = "" if args.out_subdir else f"  (original -> {ORIGINALS_DIRNAME}/{photo.name})"
+                print(f"[plan] {photo.name} -> {dest}{note}")
                 continue
 
-            originals_dir.mkdir(exist_ok=True)
-            shutil.copy2(photo, originals_dir / photo.name)
+            target_dir.mkdir(parents=True, exist_ok=True)
+            if not args.out_subdir:
+                originals_dir.mkdir(exist_ok=True)
+                shutil.copy2(photo, originals_dir / photo.name)
             clean_photo(
                 photo, out_path, session, args.jpeg, args.max_dimension,
                 post_process=args.post_process, alpha_matting=args.alpha_matting,
                 am_foreground=args.am_foreground, am_background=args.am_background,
                 am_erode=args.am_erode,
             )
-            if out_path != photo and photo.exists():
+            if not args.out_subdir and out_path != photo and photo.exists():
                 photo.unlink()
-            print(f"Cleaned {out_path.name}  (original -> {ORIGINALS_DIRNAME}/{photo.name})")
+            print(f"Cleaned {dest}")
             processed += 1
 
     if args.apply:
