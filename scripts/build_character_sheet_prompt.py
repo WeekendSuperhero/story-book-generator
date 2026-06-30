@@ -216,6 +216,62 @@ def build_sheet_prompt(
     return "\n\n".join(part for part in parts if part)
 
 
+def styles_summary(sections: dict[str, str]) -> str:
+    """Flatten the wardrobe/preference sections of a STYLES doc into one line."""
+    fragments: list[str] = []
+    for keywords in (("signature", "outfit"), ("wardrobe",), ("colors",), ("accessories",), ("style", "preferences")):
+        body = section_body(sections, *keywords)
+        for line in body.splitlines():
+            cleaned = line.strip().lstrip("*-").strip()
+            if cleaned and not looks_like_placeholder(cleaned):
+                fragments.append(cleaned)
+    return " ".join(fragments)
+
+
+def build_styles_prompt(
+    name: str,
+    sections: dict[str, str],
+    house_style: str,
+    references: list[Path],
+    style_reference: Path | None,
+) -> str:
+    """Prompt for the Pass-2 styles/wardrobe sheet (built from a STYLES doc)."""
+    instruction = extract_blockquote(section_body(sections, "styles sheet instruction"))
+    if looks_like_placeholder(instruction):
+        instruction = (
+            f"Create a character style/wardrobe sheet for {name}: a clean, labeled layout of "
+            "the signature outfit plus two or three outfit variations and key accessories on "
+            "the same on-model character."
+        )
+
+    style = extract_blockquote(section_body(sections, "art style"))
+    if looks_like_placeholder(style):
+        style = house_style
+
+    negative = extract_blockquote(section_body(sections, "avoid"))
+    if looks_like_placeholder(negative):
+        negative = DEFAULT_NEGATIVE_PROMPT
+
+    parts = [instruction]
+    summary = styles_summary(sections)
+    if summary:
+        parts.append("Wardrobe details: " + summary)
+    parts.append(
+        "Keep the character strictly on-model with the attached reference sheet — identical "
+        "face, hair, skin tone, and proportions; only the clothing and styling vary."
+    )
+    if references:
+        parts.append("Use the attached clothing reference images to ground the outfits and colors.")
+    parts.append(f"House style: {style}")
+    parts.append(
+        "Lay the sheet out on a clean white background with each outfit neatly labeled and "
+        "consistent character identity across every look."
+    )
+    parts.append(f"Negative prompt: {negative}")
+    parts.append("High detail, clean lines, no photorealism.")
+    return "\n\n".join(part for part in parts if part)
+
+
 def character_markdown(
     name: str,
     character_id: str,
