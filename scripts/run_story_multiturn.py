@@ -250,7 +250,8 @@ def page_payload(story, page, prev_image: Path, prev_desc: str, materials: dict[
 def save_image_response(resp: dict[str, Any], path: Path) -> None:
     imgs = image_blocks(resp)
     if not imgs:
-        raise RuntimeError("no image in response")
+        snippet = (extract_text(resp) or "")[:200]
+        raise RuntimeError(f"no image in response (model returned text instead: {snippet!r})")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(base64.b64decode(imgs[-1]["data"]))
 
