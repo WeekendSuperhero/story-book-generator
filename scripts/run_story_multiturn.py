@@ -218,8 +218,11 @@ def page_payload(story, page, prev_image: Path, prev_desc: str, materials: dict[
         "You render ONE full-page children's-book illustration in the comic-style house style. Keep "
         "every character IDENTICAL to their attached character sheet (face, hair, skin tone, "
         "proportions, wardrobe). Maintain visual continuity with the attached previous page. Render "
-        "the scene TEXT-FREE — no words, letters, signs, or captions — and keep faces, hands, and "
-        "action OUT of the page's reserved text zone so live text can be overlaid there."
+        "the scene TEXT-FREE — no words, letters, signs, or captions. Keep faces, hands, and action "
+        "out of the page's reserved text area and leave that area low-detail/uncluttered so text can "
+        "be overlaid later — but do NOT draw any box, frame, rectangle, outline, label, caption, "
+        "coordinates, watermark, UI, or placeholder of any kind marking that area. Output ONLY "
+        "finished illustration art."
         + fidelity_clause(fake_run)
     )
     blocks: list[dict[str, Any]] = [
@@ -230,8 +233,10 @@ def page_payload(story, page, prev_image: Path, prev_desc: str, materials: dict[
             f"THIS PAGE to render — page {page['pageNumber']}.\n"
             f"Story text (context only, do NOT draw it): {page.get('storyText','')}\n"
             f"Illustration: {page.get('illustrationPrompt','')}\n"
-            f"Reserved text zone: {page.get('textZone','')} — {page.get('negativeSpaceInstruction','')}\n"
-            f"Avoid: {page.get('imageNegativePrompt','')}"
+            f"Keep the {page.get('textZone','')} region uncluttered and low-detail for later text "
+            f"overlay — but draw NO box, label, or marking there; it must just be simpler art: "
+            f"{page.get('negativeSpaceInstruction','')}\n"
+            f"Avoid (do not render any of this): {page.get('imageNegativePrompt','')}"
         ),
     ]
     for c in present:
