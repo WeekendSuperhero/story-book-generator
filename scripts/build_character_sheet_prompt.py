@@ -40,7 +40,11 @@ DEFAULT_HOUSE_STYLE = (
 DEFAULT_NEGATIVE_PROMPT = (
     "Do not make the character photorealistic, anime-styled, or give them sharp "
     "angular features. Keep the face youthful, smooth, and flawless. Do not drift "
-    "from the described hair, eye color, skin tone, outfit, or proportions."
+    "from the described hair, eye color, skin tone, outfit, or proportions. "
+    "Teeth are natural, even, and closed together — do NOT draw gaps between teeth, "
+    "gap teeth, or a diastema. Do not distort, elongate, or mismatch arm length or "
+    "limb proportions. Keep the character's age and build accurate to the reference "
+    "(no aging up or down), with age-appropriate proportions."
 )
 
 
