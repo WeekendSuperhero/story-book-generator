@@ -1,0 +1,29 @@
+{
+  "targetReadTimeMinutes": 5,
+  "targetAgeRange": "4-8",
+  "theme": "A warm family backyard adventure about imagination, courage, and helping each other.",
+  "setting": "The family's cozy home, their backyard at dusk, and a magical starry nighttime sky.",
+  "tone": "Warm, playful, gentle, funny, emotionally satisfying.",
+  "coreLesson": "Being brave is easier when your family helps and you remember you are loved.",
+  "pageCount": 16,
+  "targetWordCount": 700,
+  "canvas": { "width": 3840, "height": 2160, "orientation": "landscape" },
+  "textLayout": {
+    "defaultZone": "bottom",
+    "allowedZones": ["bottom", "top", "left", "right"],
+    "reservedSpacePercent": 25,
+    "liveTextRequired": true
+  },
+  "storyConstraints": {
+    "rhyme": false,
+    "scaryContent": false,
+    "includePageNumbers": true,
+    "readAloud": true
+  },
+  "characterSelection": {
+    "includeCharacterIds": ["dad", "bridget", "metztli", "sebastian", "shane"],
+    "protagonistIds": ["shane", "sebastian", "metztli"],
+    "supportingCharacterIds": ["dad", "bridget"]
+  },
+  "notes": "Star the whole family. Weave in each person's real interests: Metztli (age 9) is active and loves purple and leads; Sebastian (5) loves the outdoors, insects and bugs (and Shadow the Hedgehog energy); Shane (4) loves arts, crafts, and Ninja Turtles (Raphael); Dad is funny and physically active; Bridget is a calm yoga instructor. The family dog Zoey (a dog, no reference sheet) may appear as a background pet in prose/scenes but must NOT be listed in charactersPresent. Only the five people have reference sheets. Keep it a wholesome nighttime backyard quest of imagination where the kids are brave with their parents' help."
+}

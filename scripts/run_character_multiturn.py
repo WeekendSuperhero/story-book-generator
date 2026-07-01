@@ -126,6 +126,10 @@ def create_interaction(payload: dict[str, Any], api_key: str | None, allow_proxy
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
             last = error.read().decode("utf-8", errors="replace")
+            low = last.lower()
+            if error.code == 429 and ("credit" in low or "billing" in low or "depleted" in low):
+                # Hard billing stop — not transient; don't burn retries.
+                raise RuntimeError(f"BILLING: prepayment credits depleted (top up at ai.studio): {last}") from error
             if error.code in TRANSIENT_CODES:
                 transient += 1
                 if transient < max_transient:
