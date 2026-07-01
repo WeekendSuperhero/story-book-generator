@@ -271,7 +271,7 @@ def build_payload(step: int, run: dict[str, Any], aspect_ratio: str, image_size:
             "skin-tone swatches. No story scene."
             + fidelity_clause(run)
         )
-        return {"model": IMAGE_MODEL, "previous_interaction_id": prev, "system_instruction": system,
+        return {"model": opts["image_model"], "previous_interaction_id": prev, "system_instruction": system,
                 "generation_config": cfg,
                 "response_format": image_response_format(aspect_ratio, image_size),
                 "store": True,
@@ -291,7 +291,7 @@ def build_payload(step: int, run: dict[str, Any], aspect_ratio: str, image_size:
         "STYLES.md wardrobe you wrote."
         + fidelity_clause(run)
     )
-    return {"model": IMAGE_MODEL, "previous_interaction_id": prev, "system_instruction": system,
+    return {"model": opts["image_model"], "previous_interaction_id": prev, "system_instruction": system,
             "generation_config": cfg,
             "response_format": image_response_format(aspect_ratio, image_size),
             "store": True,
@@ -382,6 +382,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--styles-template", type=Path, default=Path("templates/STYLES_TEMPLATE.md"))
     p.add_argument("--aspect-ratio", default="16:9")
     p.add_argument("--image-size", default="4K")
+    p.add_argument("--image-model", default=IMAGE_MODEL, help=f"Image model (default {IMAGE_MODEL}; pass gemini-3.1-flash-image for cheaper/faster).")
     p.add_argument("--temperature", type=float, default=1.4, help="Sampling temperature (placed high; gates how the render looks).")
     p.add_argument("--top-p", type=float, default=0.97, help="Nucleus sampling cumulative probability.")
     p.add_argument("--seed", type=int, default=42, help="Decoding seed for reproducibility (use --seed -1 to omit).")
@@ -423,7 +424,8 @@ def main() -> None:
     from datetime import datetime
     now_str = args.now or datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z (%A)")
     opts = {"temperature": args.temperature, "top_p": args.top_p,
-            "seed": (None if args.seed is not None and args.seed < 0 else args.seed), "now": now_str}
+            "seed": (None if args.seed is not None and args.seed < 0 else args.seed), "now": now_str,
+            "image_model": args.image_model}
     print(f"gen: thinking=high temperature={opts['temperature']} top_p={opts['top_p']} "
           f"seed={opts['seed']} | now={now_str}")
 

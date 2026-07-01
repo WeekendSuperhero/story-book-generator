@@ -199,7 +199,7 @@ def title_payload(story: dict[str, Any], cast: list[dict[str, Any]], opts: dict[
         blocks.append(text_block(f"{mat['name']} character sheet:"))
         blocks.append(encode_image(mat["sheet_path"]))
     blocks.append(text_block("Render the text-free cover/title-page illustration now."))
-    return {"model": IMAGE_MODEL, "system_instruction": system, "generation_config": gen_config(opts),
+    return {"model": opts["image_model"], "system_instruction": system, "generation_config": gen_config(opts),
             "response_format": image_response_format(aspect_ratio, image_size), "store": True,
             "input": blocks}
 
@@ -242,7 +242,7 @@ def page_payload(story, page, prev_image: Path, prev_desc: str, materials: dict[
         ))
         blocks += character_blocks(mat)
     blocks.append(text_block(f"Render page {page['pageNumber']} now, text-free, on-model, continuous with the previous page."))
-    return {"model": IMAGE_MODEL, "system_instruction": system, "generation_config": gen_config(opts),
+    return {"model": opts["image_model"], "system_instruction": system, "generation_config": gen_config(opts),
             "response_format": image_response_format(aspect_ratio, image_size), "store": True,
             "input": blocks}
 
@@ -265,6 +265,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out-dir", type=Path, default=Path("outputs/story"))
     p.add_argument("--aspect-ratio", default="16:9")
     p.add_argument("--image-size", default="4K")
+    p.add_argument("--image-model", default=IMAGE_MODEL, help=f"Image model (default {IMAGE_MODEL}; pass gemini-3.1-flash-image for cheaper/faster).")
     p.add_argument("--temperature", type=float, default=1.4)
     p.add_argument("--top-p", type=float, default=0.97)
     p.add_argument("--seed", type=int, default=42, help="Use -1 to omit.")
@@ -289,7 +290,8 @@ def main() -> None:
     from datetime import datetime
     now_str = args.now or datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z (%A)")
     opts = {"temperature": args.temperature, "top_p": args.top_p,
-            "seed": (None if args.seed is not None and args.seed < 0 else args.seed), "now": now_str}
+            "seed": (None if args.seed is not None and args.seed < 0 else args.seed), "now": now_str,
+            "image_model": args.image_model}
 
     brief_text = read_text(args.brief)
     brief = json.loads(brief_text)
