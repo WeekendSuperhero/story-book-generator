@@ -1,44 +1,74 @@
 # Character Design Reference: [Character Name]
 
-This template serves as the master reference guide for generating consistent images of a character for storybook creation. Fill in the brackets `[ ]` with specific details for your character.
+This template is the master reference guide for generating consistent images of a
+character for storybook creation. Fill in the brackets `[ ]` from the person's
+reference photos and the facts they provided.
 
-## 1. Core Physical Attributes (Age ~[X-Y])
+**The person must always provide:** a character name, a rough age estimate, an approximate
+height, hair color, hair texture, and one or two sentences about what they like / who they
+are. Everything else is derived from the reference photos.
 
-*   **Skin Tone:** [Describe skin tone, e.g., Light brown/tan, warm undertones]
-*   **Hair Texture & Style:** [Describe hair, e.g., Dark brown, tightly coiled/curly hair. The cut is short/faded on the sides and back, with longer curls on the top.]
-*   **Eyes:** [Describe eyes, e.g., Big, expressive, dark brown eyes.]
-*   **Distinctive Visual Anchor:** [One memorable feature, e.g., One small curl falls slightly forward on his forehead. Rounded cheeks with a tiny dimple on one side when smiling. Slight gap between front teeth when smiling.]
+> Ownership & consent: the reference photographs were provided by, are owned by, and depict
+> the person who provided them, with their consent to create this stylized character.
 
-## 2. Canonical Outfit
-*   **Default Outfit:** [Outfit that appears in most scenes, e.g., mustard yellow t-shirt, denim overalls, white sneakers with red accents.]
+## 1. Core Physical Attributes (Age ~[X])
 
-## 3. Proportion Notes
-*   **Age [X-Y] Proportions:** [Concrete proportion guidance, e.g., head is large, about one-quarter of total body height; short arms and legs; small hands; rounded shoulders.]
+*   **Age:** [rough age, e.g., 37]
+*   **Height:** [approximate height, e.g., 6 ft 3 in]
+*   **Skin Tone:** [describe skin tone, e.g., warm medium-brown with golden undertones]
+*   **Hair Color:** [e.g., primarily black]
+*   **Hair Texture & Style:** [e.g., tightly coiled/curly, short with a clean fade]
+*   **Eyes:** [e.g., big, expressive, dark brown eyes]
+*   **Distinctive Visual Anchor:** [one memorable feature — e.g., a dimple when smiling,
+    a freckle pattern, a tattoo. Teeth are even and natural with NO gaps.]
 
-## 4. Expression Range
-*   **Default/Smiling:** [e.g., Wide, joyful, and enthusiastic smile.]
-*   **Other Expressions:** [e.g., Even when surprised, worried, or thoughtful, his face remains soft and open, with large expressive eyes and rounded brows.]
+## 2. Color Palette (must appear on the character sheet)
 
-## 5. Art Style Guidelines ([Art Style Name])
+List the exact colors so the reference sheet can show a labeled swatch panel:
 
-When generating new illustrations of this character, always append the following style rules:
-> "[Insert specific art style instructions here, e.g., Comic-book style illustration...]"
+*   **Skin-tone swatches:** [base tone + shadow + highlight, e.g., warm medium-brown base]
+*   **Hair color swatch(es):** [e.g., near-black with cooler highlights]
+*   **Eye color swatch:** [e.g., dark brown]
 
-## 6. Consistency / Negative Prompt
+The rendered character sheet **must include** a small labeled color-palette panel showing
+these hair-color and skin-tone swatches.
 
-To prevent the character from drifting between generations, explicitly state what should NOT happen:
-> "Do not make him photorealistic, older than preschool age, pale-skinned, straight-haired, overly muscular, anime-styled, or with sharp angular facial features. Avoid changing his eye color, hair texture, or core face shape."
+## 3. Canonical Outfit
+*   **Default Outfit:** [outfit that appears in most scenes]
 
-## 7. Reference Sheet Instruction
+## 4. Proportion Notes
+*   **Proportions (age [X]):** [concrete guidance — head-to-body ratio, limb length, build.
+    Keep proportions accurate and true to the person's real age and body.]
 
-Before using him in scenes, generate a clean character sheet using this prompt structure:
-> "Create a character reference sheet showing front view, side view, three-quarter view, full-body pose, close-up face, and three expressions: joyful, curious, and surprised of [Character Description]. [Insert Style Guidelines]."
+## 5. Expression Range
+*   **Default/Smiling:** [e.g., warm, joyful smile with even teeth]
+*   **Other Expressions:** [e.g., curious, surprised — keep the face soft and expressive]
 
-## 8. How to Update / Age Up the Character (Optional)
+## 6. Art Style Guidelines (Comic-Style)
 
-[Instructions on how to age the character up in the future]
+Render in the house style supplied by the `comic-style` skill (provided in the generation
+request); do not restate it here.
+
+## 7. Consistency / Negative Prompt
+
+To prevent drift between generations, state what should NOT happen:
+> "Do not make the character photorealistic, anime-styled, or sharply angular. Keep the
+> face youthful, smooth, and flawless. Do not drift from the described hair color, hair
+> texture, eye color, skin tone, or proportions. Teeth are even and closed — no gaps
+> between teeth. Do not change the character's age or body proportions."
+
+## 8. Reference Sheet Instruction
+
+> "Create a character reference sheet showing front view, side view, three-quarter view,
+> full-body pose, close-up face, and three expressions (joyful, curious, surprised) of
+> [Character Description]. Include a labeled color-palette panel with the hair color(s) and
+> skin-tone swatches. Comic-style house style; teeth even with no gaps; proportions accurate
+> to the person's real age and body."
 
 ## 9. Master Prompt Template
 
-To easily generate future scenes, copy and paste this template, filling in the `[BRACKETS]`:
-> "[Art Style Prefix] of a [Age]-year-old [Gender] with [Skin Tone], [Hair Description], [Eye Description], and [Distinctive Visual Anchor]. [Proportion Notes]. He/She is wearing [Canonical Outfit OR New Outfit]. He/She is [Expression] and [Action/Pose/Environment]. [Art Style Guidelines]. [Negative Prompt]."
+To generate future scenes, fill the `[BRACKETS]`:
+> "[Art Style Prefix] of a [Age]-year-old [Gender], [Height], with [Skin Tone], [Hair Color]
+> [Hair Texture], [Eye Description], and [Distinctive Visual Anchor]. [Proportion Notes].
+> Wearing [Outfit]. [Expression] and [Action/Pose/Environment]. Comic-style house style.
+> Even teeth, no gaps; accurate age and proportions."

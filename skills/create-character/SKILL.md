@@ -18,6 +18,12 @@ From source photos to **two photos per character**:
 
 plus two canon docs: `<NAME>_DESCRIPTION.md` (likeness) and `<NAME>_STYLES.md` (styles).
 
+## What the person must provide
+For each character, collect: **character name, rough age, approximate height, hair color,
+hair texture,** and **one or two sentences** about what they like / who they are. Store it in
+`characters/<Name>/FACTS.md`; it is fed to Gemini as authoritative input (Gemini writes the
+description — you don't hand-author it). Everything else is read from the reference photos.
+
 ## Wiring (how it fits together)
 - The **comic-style skill** (`skills/comic-style/SKILL.md`) is loaded and placed in the
   **`system_instruction`** of *every* generation (both descriptions and both sheets), so
@@ -26,6 +32,21 @@ plus two canon docs: `<NAME>_DESCRIPTION.md` (likeness) and `<NAME>_STYLES.md` (
   `STYLES_TEMPLATE.md` (Pass 2).
 - `source/` holds the original photos and is never modified; each pass extracts into its
   own subfolder (`reference/`, `styles/`).
+- **Every request also carries:** an ownership/consent line (the photos are owned by and
+  depict the person who provided them) and the **current date/time**.
+- The **character sheet must include a hair/skin color-palette** panel (see the template).
+- The **styles sheet keeps identity/proportions IDENTICAL to the reference sheet**; the
+  clothing/style images are used **only as inspiration for how to dress** the character.
+- **Generation config on every turn:** `thinking_level` is always **high**; `temperature`
+  is placed **high** (it gates how the render looks), plus `top_p` and a fixed `seed` for
+  reproducibility.
+
+## Automated (multi-turn, concurrent)
+`scripts/run_character_multiturn.py --all --send` runs the whole thing: a 4-turn
+Interactions chain per character (description → styles.md → canon sheet → styles sheet)
+carried by `previous_interaction_id`, all characters at once with a barrier per step, and
+every interaction deleted at the end. Prep the cut-outs first with `prep_source_photos.py`
+(`--out-subdir reference` with `birefnet-portrait`, `--out-subdir styles` with `u2net_cloth_seg`).
 
 ## Setup (once)
 ```bash

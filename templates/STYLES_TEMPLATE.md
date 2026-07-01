@@ -5,6 +5,12 @@ Pass 2 of character creation. Filled from the character's **reference**
 (u2net_cloth_seg) of the source photos. Captures what the character wears and their
 style preferences, so scenes can dress them on-model. Fill the brackets `[ ]`.
 
+> **Identity is fixed.** The styles sheet must keep the character's face, hair, skin
+> tone, body proportions, design, and overall identity **IDENTICAL** to the reference
+> sheet. The clothing/style images are used **only as inspiration for how to dress** the
+> character (outfit ideas) — never as a source for their body, face, or proportions.
+> Always render in the `comic-style` house-style skill.
+
 ## 1. Signature Outfit
 
 *   **Default look:** [the most representative outfit — top, bottom, footwear, e.g.
@@ -47,7 +53,9 @@ it is provided in the generation request).
 ## 9. Styles Sheet Instruction
 
 Prompt structure for rendering the styles sheet (one image, comic-style):
-> "Create a character style/wardrobe sheet for [Name]: a clean labeled layout of
-> their signature outfit plus 2–3 outfit variations and key accessories, on the same
-> on-model character. Keep the face, hair, skin tone, and proportions identical to the
-> reference sheet. [Insert palette + signature pieces]."
+> "Create a character style/wardrobe sheet for [Name] in the comic-style house style: a
+> clean labeled layout of their signature outfit plus 2–3 outfit variations and key
+> accessories, on the SAME character. Keep the face, hair, skin tone, body proportions,
+> design, and identity IDENTICAL to the reference sheet — do not redesign the person. Use
+> the attached clothing/style images ONLY as inspiration for how to dress the character.
+> [Insert palette + signature pieces]."

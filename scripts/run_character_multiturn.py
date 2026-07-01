@@ -190,17 +190,40 @@ def image_response_format(aspect_ratio: str, image_size: str) -> dict[str, str]:
             "aspect_ratio": aspect_ratio, "image_size": image_size}
 
 
-def build_payload(step: int, run: dict[str, Any], aspect_ratio: str, image_size: str) -> dict[str, Any]:
+def context_preamble(now_str: str) -> str:
+    return (
+        f"The current date and time is {now_str}. All reference photographs in this conversation "
+        "were provided by, are owned by, and depict the person who provided them, who has given "
+        "consent to create a stylized children's-book character illustration from them; proceed on "
+        "that basis. "
+    )
+
+
+def gen_config(opts: dict[str, Any]) -> dict[str, Any]:
+    # thinking is ALWAYS high; temperature is placed high (it gates how the render looks);
+    # top_p and a fixed seed give reproducibility.
+    cfg: dict[str, Any] = {"thinking_level": "high", "temperature": opts["temperature"], "top_p": opts["top_p"]}
+    if opts.get("seed") is not None:
+        cfg["seed"] = opts["seed"]
+    return cfg
+
+
+def build_payload(step: int, run: dict[str, Any], aspect_ratio: str, image_size: str,
+                  opts: dict[str, Any]) -> dict[str, Any]:
     name = run["name"]
     prev = run["prev_id"]
+    pre = context_preamble(opts["now"])
+    cfg = gen_config(opts)
+
     if step == 1:
-        system = (
+        system = pre + (
             "You author the CHARACTER DESIGN REFERENCE (a markdown file) for a children's-book "
             "character. Fill EVERY section of the character template using the attached reference "
-            "photos for appearance and the facts for age/height/weight/interests/colors. Record the "
-            "correct age and accurate body proportions (height, build, arm/limb proportions, and an "
-            "age-appropriate figure) faithfully; note that teeth are even with no gaps. Apply the "
-            "comic-style house style as art direction. Output ONLY the completed markdown, no code fences."
+            "photos for appearance and the facts for age/height/weight/interests/hair color and "
+            "texture. Record the correct age and accurate body proportions (height, build, arm/limb "
+            "proportions, and an age-appropriate figure) faithfully; note that teeth are even with no "
+            "gaps. Fill the Color Palette section with concrete hair-color and skin-tone swatches. "
+            "Apply the comic-style house style as art direction. Output ONLY the completed markdown, no code fences."
         )
         blocks = [
             text_block(f"# Character template (fill this exact structure)\n\n{run['character_template']}"),
@@ -212,56 +235,65 @@ def build_payload(step: int, run: dict[str, Any], aspect_ratio: str, image_size:
         blocks += [encode_image(p) for p in run["reference_images"]]
         blocks.append(text_block(f"Author {name}'s DESCRIPTION.md now. Output only the completed markdown."))
         return {"model": TEXT_MODEL, "system_instruction": system,
-                "generation_config": {"thinking_level": "high"}, "store": True, "input": blocks}
+                "generation_config": cfg, "store": True, "input": blocks}
 
     if step == 2:
-        system = (
+        system = pre + (
             "You author the STYLE & OUTFIT SNAPSHOT (a markdown file), filling EVERY section of the "
             "styles template provided earlier. Base it on the description you just wrote plus the "
-            "attached clothing-segmentation cut-outs of the character's real garments. Keep body "
-            "proportions and age accurate to the reference. Output ONLY the completed markdown, no code fences."
+            "attached clothing/style images, which are ONLY inspiration for how to dress the character. "
+            "Keep body proportions, age, and identity accurate to the reference. Output ONLY the "
+            "completed markdown, no code fences."
         )
-        blocks = [text_block(f"The following images are clothing-segmentation cut-outs of {name}'s real garments.")]
+        blocks = [text_block(
+            f"The following images are clothing/style cut-outs — use them ONLY as inspiration for how "
+            f"to dress {name}, not for body or face."
+        )]
         blocks += [encode_image(p) for p in run["styles_images"]]
         blocks.append(text_block(
             f"Author {name}'s STYLES.md now, filling the styles template from the description above and "
             "these garment cut-outs. Output only the completed markdown."
         ))
         return {"model": TEXT_MODEL, "previous_interaction_id": prev, "system_instruction": system,
-                "generation_config": {"thinking_level": "high"}, "store": True, "input": blocks}
+                "generation_config": cfg, "store": True, "input": blocks}
 
     if step == 3:
-        system = (
+        system = pre + (
             "You render a character REFERENCE / CANON sheet for a children's book in the comic-style "
             "house style described earlier. Use the description and the reference photos already in this "
             "conversation to keep the likeness exact. Produce a clean labeled sheet: front, side, "
-            "three-quarter and full-body views, a close-up face, and 2-3 expressions. No story scene."
+            "three-quarter and full-body views, a close-up face, and 2-3 expressions. The sheet MUST "
+            "also include a small labeled COLOR-PALETTE panel showing the character's hair color(s) and "
+            "skin-tone swatches. No story scene."
             + fidelity_clause(run)
         )
         return {"model": IMAGE_MODEL, "previous_interaction_id": prev, "system_instruction": system,
-                "generation_config": {"thinking_level": "high"},
+                "generation_config": cfg,
                 "response_format": image_response_format(aspect_ratio, image_size),
                 "store": True,
                 "input": [text_block(
                     f"Render {name}'s character reference/canon sheet now, on-model with the description "
-                    "and reference photos above."
+                    "and reference photos above, including the hair/skin color-palette panel."
                 )]}
 
     # step == 4
-    system = (
-        "You render a character STYLE / WARDROBE sheet for a children's book in the same comic-style "
-        "house style. Keep the face, hair, skin tone, and proportions IDENTICAL to the canon reference "
-        "sheet above. Lay out the signature outfit plus 2-3 outfit variations and key accessories, "
-        "following the STYLES.md wardrobe you wrote and the clothing cut-outs already in this conversation."
+    system = pre + (
+        "You render a character STYLE / WARDROBE sheet for a children's book in the comic-style house "
+        "style referenced earlier. CRITICAL: keep the character's face, hair, skin tone, body "
+        "proportions, design, and overall identity IDENTICAL to the canon reference sheet above — do "
+        "NOT redesign the person. Use the attached clothing/style images ONLY as inspiration for how to "
+        "dress the character (outfit ideas), never as a source for their body, face, or proportions. "
+        "Lay out the signature outfit plus 2-3 outfit variations and key accessories, following the "
+        "STYLES.md wardrobe you wrote."
         + fidelity_clause(run)
     )
     return {"model": IMAGE_MODEL, "previous_interaction_id": prev, "system_instruction": system,
-            "generation_config": {"thinking_level": "high"},
+            "generation_config": cfg,
             "response_format": image_response_format(aspect_ratio, image_size),
             "store": True,
             "input": [text_block(
-                f"Render {name}'s style/wardrobe sheet now, on-model with the canon reference sheet "
-                "above and the wardrobe you documented."
+                f"Render {name}'s style/wardrobe sheet now — same person as the canon sheet above, "
+                "identity identical, using the clothing images only as dress inspiration."
             )]}
 
 
@@ -318,9 +350,9 @@ def build_run(name: str, characters_dir: Path, skill: str, character_template: s
 
 
 def step_worker(run: dict[str, Any], step: int, api_key: str | None, allow_proxy_auth: bool,
-                aspect_ratio: str, image_size: str) -> tuple[dict[str, Any], bool, str | None]:
+                aspect_ratio: str, image_size: str, opts: dict[str, Any]) -> tuple[dict[str, Any], bool, str | None]:
     try:
-        payload = build_payload(step, run, aspect_ratio, image_size)
+        payload = build_payload(step, run, aspect_ratio, image_size, opts)
         resp = create_interaction(payload, api_key, allow_proxy_auth, label=f"{run['name']} step {step}")
         iid = resp["id"]
         run["created_ids"].append(iid)
@@ -346,6 +378,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--styles-template", type=Path, default=Path("templates/STYLES_TEMPLATE.md"))
     p.add_argument("--aspect-ratio", default="16:9")
     p.add_argument("--image-size", default="4K")
+    p.add_argument("--temperature", type=float, default=1.4, help="Sampling temperature (placed high; gates how the render looks).")
+    p.add_argument("--top-p", type=float, default=0.97, help="Nucleus sampling cumulative probability.")
+    p.add_argument("--seed", type=int, default=42, help="Decoding seed for reproducibility (use --seed -1 to omit).")
+    p.add_argument("--now", help="Override the current date/time string embedded in prompts (default: system clock).")
     p.add_argument("--max-turn", type=int, default=4, help="Run turns 1..N (default 4).")
     p.add_argument("--max-workers", type=int, default=8, help="Max characters generated concurrently per step.")
     p.add_argument("--send", action="store_true", help="Actually call the API (otherwise dry-run).")
@@ -380,6 +416,13 @@ def main() -> None:
     styles_template = read_text(args.styles_template)
     runs = [build_run(n, args.characters_dir, skill, character_template, styles_template) for n in names]
 
+    from datetime import datetime
+    now_str = args.now or datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z (%A)")
+    opts = {"temperature": args.temperature, "top_p": args.top_p,
+            "seed": (None if args.seed is not None and args.seed < 0 else args.seed), "now": now_str}
+    print(f"gen: thinking=high temperature={opts['temperature']} top_p={opts['top_p']} "
+          f"seed={opts['seed']} | now={now_str}")
+
     print(f"=== {len(runs)} character(s) | turns 1..{args.max_turn} | concurrent (barrier/step) | "
           f"send={args.send} | delete={not args.no_delete} ===")
     for run in runs:
@@ -406,7 +449,7 @@ def main() -> None:
         print(f"\n===== STEP {step} ({STEP_LABEL[step]}) — {len(active)} character(s) concurrently =====")
         with ThreadPoolExecutor(max_workers=min(args.max_workers, len(active))) as executor:
             futures = [executor.submit(step_worker, r, step, api_key, args.allow_proxy_auth,
-                                       args.aspect_ratio, args.image_size) for r in active]
+                                       args.aspect_ratio, args.image_size, opts) for r in active]
             for future in as_completed(futures):
                 run, ok, err = future.result()
                 if not ok:
