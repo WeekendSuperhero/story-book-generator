@@ -74,39 +74,101 @@ Output ONLY the JSON object — no prose, no markdown, no code fences.
 
 # ---- material loading -------------------------------------------------------
 
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+# The 4 materials every referenced character must contribute, in attach order.
+ATTACH_ORDER = [("description", "description_path"), ("styles_md", "styles_path"),
+                ("character_sheet", "sheet_path"), ("styles_sheet", "styles_sheet_path")]
+
+
+def _ci_find(directory: Path, predicate) -> Path | None:
+    """First file in directory whose lowercased name matches predicate (case-insensitive,
+    so it works even on a case-sensitive filesystem regardless of how files were cased)."""
+    if not directory.is_dir():
+        return None
+    for f in sorted(directory.iterdir()):
+        if f.is_file() and predicate(f.name.lower()):
+            return f
+    return None
+
+
+def resolve_materials(d: Path) -> dict[str, Any]:
+    """Resolve a character's four materials by content-pattern, case-insensitively."""
+    name = d.name
+    cid = slugify(name)
+    sheet = _ci_find(d, lambda n: "_character_sheet." in n and Path(n).suffix in IMAGE_EXTS)
+    return {
+        "id": cid, "name": name, "dir": d,
+        "facts_path": find_facts_file(d),
+        "description_path": _ci_find(d, lambda n: n.endswith("_description.md")),
+        "styles_path": _ci_find(d, lambda n: n.endswith("_styles.md")),
+        "sheet_path": sheet,
+        "styles_sheet_path": _ci_find(d, lambda n: "_styles_sheet." in n and Path(n).suffix in IMAGE_EXTS),
+        "reference_sheet": f"characters/{name}/{sheet.name}" if sheet else f"characters/{name}/{cid}_character_sheet.jpg",
+    }
+
+
 def load_materials(characters_dir: Path) -> dict[str, dict[str, Any]]:
     """Map character id (slug) -> its four materials, for every complete character folder."""
     out: dict[str, dict[str, Any]] = {}
     for d in sorted(p for p in characters_dir.iterdir() if p.is_dir()):
-        name = d.name
-        cid = slugify(name)
-        desc = d / f"{name.upper()}_DESCRIPTION.md"
-        styles = d / f"{name.upper()}_STYLES.md"
-        sheet = d / f"{cid}_character_sheet.jpg"
-        styles_sheet = d / f"{cid}_styles_sheet.jpg"
-        if not (desc.exists() and sheet.exists()):
-            continue
-        out[cid] = {
-            "id": cid, "name": name,
-            "facts_path": find_facts_file(d),
-            "description_path": desc, "styles_path": styles if styles.exists() else None,
-            "sheet_path": sheet, "styles_sheet_path": styles_sheet if styles_sheet.exists() else None,
-            "reference_sheet": f"characters/{name}/{cid}_character_sheet.jpg",
-        }
+        mat = resolve_materials(d)
+        if mat["description_path"] and mat["sheet_path"]:
+            out[mat["id"]] = mat
     return out
 
 
-def character_blocks(mat: dict[str, Any], include_styles_image: bool = True) -> list[dict[str, Any]]:
-    """The four materials for one character as interaction input blocks."""
+def character_attachments(mat: dict[str, Any]) -> tuple[list[tuple[str, Path]], list[str]]:
+    """(present [(kind, path)], missing [kind]) for one character's 4 materials."""
+    items, missing = [], []
+    for kind, key in ATTACH_ORDER:
+        if mat.get(key):
+            items.append((kind, mat[key]))
+        else:
+            missing.append(kind)
+    return items, missing
+
+
+def resolve_present(present: list[dict], materials: dict[str, dict]) -> tuple[list, list]:
+    """Match each charactersPresent entry to a materials folder by id OR name, case-insensitively."""
+    by_name = {slugify(m["name"]): k for k, m in materials.items()}
+    resolved, unresolved = [], []
+    for c in present:
+        cid = slugify(c.get("id", "") or "")
+        nm = slugify(c.get("name", "") or "")
+        key = cid if cid in materials else (nm if nm in materials else by_name.get(nm))
+        if key:
+            resolved.append((c, materials[key]))
+        else:
+            unresolved.append(c.get("id") or c.get("name") or "?")
+    return resolved, unresolved
+
+
+def print_manifest(label: str, resolved: list, unresolved: list) -> None:
+    """Show exactly which file (name + path) is attached, for which character, where."""
+    total = 0
+    for _c, mat in resolved:
+        items, missing = character_attachments(mat)
+        for kind, path in items:
+            log(f"    [{label}] {mat['id']:<10} {kind:<15} <- {path}")
+            total += 1
+        for k in missing:
+            log(f"    [{label}] {mat['id']:<10} {k:<15} !! MISSING — cannot attach")
+    for u in unresolved:
+        log(f"    [{label}] UNRESOLVED CHARACTER {u!r} — no matching character folder")
+    tail = f", {len(unresolved)} UNRESOLVED" if unresolved else ""
+    log(f"    [{label}] => {len(resolved)} character(s), {total} file(s) attached{tail}")
+
+
+def character_blocks(mat: dict[str, Any]) -> list[dict[str, Any]]:
+    """The four materials for one character as interaction input blocks (always all present ones)."""
     blocks = [text_block(f"## Character: {mat['name']} (id: {mat['id']})")]
-    blocks.append(text_block(f"### {mat['name']} description\n\n{read_text(mat['description_path'])}"))
-    if mat["styles_path"]:
-        blocks.append(text_block(f"### {mat['name']} styles\n\n{read_text(mat['styles_path'])}"))
-    blocks.append(text_block(f"### {mat['name']} character sheet (canon likeness):"))
-    blocks.append(encode_image(mat["sheet_path"]))
-    if include_styles_image and mat["styles_sheet_path"]:
-        blocks.append(text_block(f"### {mat['name']} styles sheet (wardrobe):"))
-        blocks.append(encode_image(mat["styles_sheet_path"]))
+    items, _missing = character_attachments(mat)
+    for kind, path in items:
+        if kind in ("description", "styles_md"):
+            blocks.append(text_block(f"### {mat['name']} {kind}\n\n{read_text(path)}"))
+        else:
+            blocks.append(text_block(f"### {mat['name']} {kind} ({path.name}):"))
+            blocks.append(encode_image(path))
     return blocks
 
 
@@ -196,9 +258,8 @@ def title_payload(story: dict[str, Any], cast: list[dict[str, Any]], opts: dict[
         f"Theme: {book.get('theme','')}. Tone: {book.get('tone','')}."
     )]
     for mat in cast:
-        blocks.append(text_block(f"{mat['name']} character sheet:"))
-        blocks.append(encode_image(mat["sheet_path"]))
-    blocks.append(text_block("Render the text-free cover/title-page illustration now."))
+        blocks += character_blocks(mat)
+    blocks.append(text_block("Render the text-free cover/title-page illustration now, on-model with every attached character sheet."))
     return {"model": opts["image_model"], "system_instruction": system, "generation_config": gen_config(opts),
             "response_format": image_response_format(aspect_ratio, image_size), "store": True,
             "input": blocks}
@@ -209,10 +270,10 @@ def page_info(page: dict[str, Any]) -> str:
     return f"Page {page['pageNumber']}: {page.get('storyText','')} (characters: {who or 'none'})"
 
 
-def page_payload(story, page, prev_image: Path, prev_desc: str, materials: dict[str, dict],
+def page_payload(story, page, prev_image: Path, prev_desc: str, present_resolved: list,
                  opts, aspect_ratio: str, image_size: str) -> dict[str, Any]:
-    present = [c for c in page.get("charactersPresent", []) if c.get("id") in materials]
-    child_ctx = any(detect_child(read_text(materials[c["id"]]["description_path"])) for c in present)
+    child_ctx = any(detect_child(read_text(mat["description_path"]))
+                    for _c, mat in present_resolved if mat.get("description_path"))
     fake_run = {"is_child": child_ctx}
     system = context_preamble(opts["now"]) + (
         "You render ONE full-page children's-book illustration in the comic-style house style. Keep "
@@ -239,8 +300,7 @@ def page_payload(story, page, prev_image: Path, prev_desc: str, materials: dict[
             f"Avoid (do not render any of this): {page.get('imageNegativePrompt','')}"
         ),
     ]
-    for c in present:
-        mat = materials[c["id"]]
+    for c, mat in present_resolved:
         blocks.append(text_block(
             f"Character in scene: {mat['name']} — expression: {c.get('expression','')}, "
             f"pose: {c.get('pose','')}, action: {c.get('action','')}. Keep identical to the sheets below."
@@ -319,18 +379,32 @@ def main() -> None:
     print(f"=== Story run | cast: {[m['name'] for m in cast]} | send={args.send} | delete={not args.no_delete} ===")
     print(f"gen: thinking=high temperature={opts['temperature']} top_p={opts['top_p']} seed={opts['seed']} | now={now_str}")
     print(f"brief: {args.brief} | out: {out_dir}")
+    selected = {int(x) for x in args.pages.split(",") if x.strip()} if args.pages else None
+    existing_story = json.loads(read_text(story_path)) if story_path.exists() else None
+
     if not args.send:
-        print("\n[dry-run] Turn 1 canon attaches 4 materials x", len(cast), "characters + schema + rules.")
-        print("Then title_page.jpg, then each page primed by prev image + materials (no interaction id).")
-        print("Pass --send to execute.")
+        print("\n[dry-run] Attachment manifest — exactly what WOULD be attached (name <- path):")
+        print("  TITLE PAGE:")
+        print_manifest("title", [(None, m) for m in cast], [])
+        if existing_story:
+            for page in existing_story["pages"]:
+                n = int(page["pageNumber"])
+                if selected is not None and n not in selected:
+                    continue
+                resolved, unresolved = resolve_present(page.get("charactersPresent", []), materials)
+                print(f"  PAGE {n:03d}:")
+                print_manifest(f"page {n}", resolved, unresolved)
+        else:
+            print("  (story.json not present yet — run --send once to generate the canon, then dry-run to preview pages.)")
+        print("\nPass --send to execute.")
         return
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Canon (+ validate/fix loop)
-    if story_path.exists() and not args.overwrite:
+    if existing_story is not None and not args.overwrite:
         print(f"Reusing existing {story_path}")
-        story = json.loads(read_text(story_path))
+        story = existing_story
     else:
         print("\n== CANON ==")
         story = generate_canon(brief_text, schema_text, cast, opts, api_key, args.allow_proxy_auth, run_log)
@@ -348,6 +422,7 @@ def main() -> None:
     if title_path.exists() and not args.overwrite:
         print(f"Reusing {title_path}")
     else:
+        print_manifest("title", [(None, m) for m in cast], [])
         resp = create_interaction(title_payload(story, cast, opts, args.aspect_ratio, args.image_size),
                                   api_key, args.allow_proxy_auth, label="title")
         log_id(run_log, -1, resp["id"])
@@ -356,23 +431,23 @@ def main() -> None:
 
     # 3. Pages (sequential; each primed by the previous rendered image)
     print("\n== PAGES ==")
-    selected = None
-    if args.pages:
-        selected = {int(x) for x in args.pages.split(",") if x.strip()}
     prev_image = title_path
     prev_desc = f"Title page / cover of \"{story['book']['title']}\"."
     for page in story["pages"]:
         n = int(page["pageNumber"])
         page_path = pages_dir / f"page-{n:03d}.jpg"
         if selected is not None and n not in selected:
-            prev_image, prev_desc = page_path if page_path.exists() else prev_image, page_info(page)
+            prev_image, prev_desc = (page_path if page_path.exists() else prev_image), page_info(page)
             continue
         if page_path.exists() and not args.overwrite:
             print(f"  page {n:03d}: exists, skip")
             prev_image, prev_desc = page_path, page_info(page)
             continue
+        resolved, unresolved = resolve_present(page.get("charactersPresent", []), materials)
+        print(f"  page {n:03d} attachments:")
+        print_manifest(f"page {n}", resolved, unresolved)
         resp = create_interaction(
-            page_payload(story, page, prev_image, prev_desc, materials, opts, args.aspect_ratio, args.image_size),
+            page_payload(story, page, prev_image, prev_desc, resolved, opts, args.aspect_ratio, args.image_size),
             api_key, args.allow_proxy_auth, label=f"page {n}")
         log_id(run_log, n, resp["id"])
         save_image_response(resp, page_path)
