@@ -118,9 +118,17 @@ run = client.interactions.create(
 ```
 
 **Verified live:** clone + `uv sync` + a real `--send` generation in the sandbox via
-this `transform` injection (a sheet was produced). The Files-API **retrieval** leg
-(sandbox upload → `client.files.download`) uses the same auth and is wired into
-`scripts/run_antigravity_pipeline.py`.
+this `transform` injection (a sheet was produced).
+
+> **Known blocker (proven 2026-06).** The Gemini **Files API cannot move private bytes
+> in or out of the sandbox.** Files attached to an interaction are *viewable context
+> only* — they are **not** materialized on the sandbox filesystem (a live agent searched
+> the whole tree and found nothing), so the inbound-photo leg fails. And the API refuses
+> to download them back: *"Only GENERATED files can be downloaded"* — so the
+> sandbox-upload → `client.files.download` retrieval leg fails too. **A real end-to-end
+> sandbox run therefore needs a different byte transport** over the catch-all egress
+> (e.g. **private signed GCS URLs** the sandbox `curl`s in and out). Until that is wired,
+> run the pipeline **locally** (`uv sync` installs rembg + the model locally).
 
 Notes that make this work:
 - `--allow-proxy-auth` — inside Antigravity the API key is injected via the network
