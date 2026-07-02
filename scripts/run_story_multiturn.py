@@ -250,8 +250,10 @@ def title_payload(story: dict[str, Any], cast: list[dict[str, Any]], opts: dict[
     system = context_preamble(opts["now"]) + (
         "You render the TITLE-PAGE / cover illustration for a children's book in the comic-style "
         "house style. Feature the main cast together in an inviting establishing scene, on-model "
-        "with the attached character sheets. Render it TEXT-FREE (no title, letters, or words) and "
-        "leave a clean, low-detail area near the top or center where the title will be overlaid later."
+        "with the attached character sheets. Render it strictly TEXT-FREE: NO title, letters, words, "
+        "numbers, signs, posters, labels, banners, book covers, papers, or any readable text on props "
+        "or clothing. Leave a clean, low-detail area near the top or center for the title to be "
+        "overlaid later, but do NOT draw any box, frame, or placeholder there."
     )
     blocks = [text_block(
         f"Book: \"{book['title']}\" — {book.get('subtitle','')}\nSummary: {book.get('summary','')}\n"
