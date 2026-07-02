@@ -25,6 +25,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--model", default="isnet-anime", help="rembg model (default isnet-anime).")
     p.add_argument("--pages", help="Only these page numbers, e.g. 1,6,12. Default: all.")
     p.add_argument("--post-process", action="store_true", help="post_process_mask=True (cleaner edges).")
+    p.add_argument("--mask-only", action="store_true", help="Save only the mask (skip the cutout) — faster.")
     p.add_argument("--no-title", action="store_true")
     return p.parse_args()
 
@@ -49,9 +50,12 @@ def main() -> None:
         data = path.read_bytes()
         mask = remove(data, only_mask=True, post_process_mask=args.post_process, session=session)
         (args.out / f"{name}.mask.png").write_bytes(mask)
-        cutout = remove(data, post_process_mask=args.post_process, session=session)
-        (args.out / f"{name}.cutout.png").write_bytes(cutout)
-        print(f"  {name}: mask + cutout saved")
+        if args.mask_only:
+            print(f"  {name}: mask saved")
+        else:
+            cutout = remove(data, post_process_mask=args.post_process, session=session)
+            (args.out / f"{name}.cutout.png").write_bytes(cutout)
+            print(f"  {name}: mask + cutout saved")
     print("done")
 
 
