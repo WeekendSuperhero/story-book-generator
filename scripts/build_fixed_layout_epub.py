@@ -694,7 +694,7 @@ def package_opf(
     identifier: str,
     modified: str,
     cover_image_name: str | None = None,
-    spread: str = "both",
+    spread: str = "none",
 ) -> str:
     title = html.escape(story["book"]["title"])
     subtitle = story["book"].get("subtitle", "")
