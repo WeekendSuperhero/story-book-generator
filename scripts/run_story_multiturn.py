@@ -321,6 +321,27 @@ def save_image_response(resp: dict[str, Any], path: Path) -> None:
     path.write_bytes(base64.b64decode(imgs[-1]["data"]))
 
 
+def create_image(payload: dict[str, Any], api_key, allow_proxy_auth, label: str,
+                 out_path: Path, run_log: Path, turn: int, tries: int = 3) -> None:
+    """Create an image interaction and save it, retrying if the model returns an empty
+    response (occasional completed-but-no-image). Every attempt's id is logged so cleanup
+    still deletes orphaned attempts."""
+    last = ""
+    for attempt in range(1, tries + 1):
+        resp = create_interaction(payload, api_key, allow_proxy_auth, label=f"{label} try{attempt}")
+        iid = resp.get("id")
+        if iid:
+            log_id(run_log, turn, iid)
+        try:
+            save_image_response(resp, out_path)
+            return
+        except RuntimeError as exc:
+            last = str(exc)
+            if attempt < tries:
+                log(f"  [{label}] empty response (try {attempt}/{tries}) — retrying")
+    raise RuntimeError(f"{label}: {last}")
+
+
 # ---- main -------------------------------------------------------------------
 
 def parse_args() -> argparse.Namespace:
@@ -423,10 +444,8 @@ def main() -> None:
         print(f"Reusing {title_path}")
     else:
         print_manifest("title", [(None, m) for m in cast], [])
-        resp = create_interaction(title_payload(story, cast, opts, args.aspect_ratio, args.image_size),
-                                  api_key, args.allow_proxy_auth, label="title")
-        log_id(run_log, -1, resp["id"])
-        save_image_response(resp, title_path)
+        create_image(title_payload(story, cast, opts, args.aspect_ratio, args.image_size),
+                     api_key, args.allow_proxy_auth, "title", title_path, run_log, -1)
         print(f"Wrote {title_path} ({title_path.stat().st_size} bytes)")
 
     # 3. Pages (sequential; each primed by the previous rendered image)
@@ -446,11 +465,9 @@ def main() -> None:
         resolved, unresolved = resolve_present(page.get("charactersPresent", []), materials)
         print(f"  page {n:03d} attachments:")
         print_manifest(f"page {n}", resolved, unresolved)
-        resp = create_interaction(
+        create_image(
             page_payload(story, page, prev_image, prev_desc, resolved, opts, args.aspect_ratio, args.image_size),
-            api_key, args.allow_proxy_auth, label=f"page {n}")
-        log_id(run_log, n, resp["id"])
-        save_image_response(resp, page_path)
+            api_key, args.allow_proxy_auth, f"page {n}", page_path, run_log, n)
         print(f"  page {n:03d}: wrote {page_path} ({page_path.stat().st_size} bytes)")
         prev_image, prev_desc = page_path, page_info(page)
 
