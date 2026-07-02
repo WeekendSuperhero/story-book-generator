@@ -213,9 +213,9 @@ def context_preamble(now_str: str) -> str:
 
 
 def gen_config(opts: dict[str, Any]) -> dict[str, Any]:
-    # thinking is ALWAYS high; temperature is placed high (it gates how the render looks);
-    # top_p and a fixed seed give reproducibility.
-    cfg: dict[str, Any] = {"thinking_level": "high", "temperature": opts["temperature"], "top_p": opts["top_p"]}
+    # thinking_level is ALWAYS high; a fixed seed gives reproducibility. top_p is intentionally
+    # NOT sent (temperature alone controls sampling).
+    cfg: dict[str, Any] = {"thinking_level": "high", "temperature": opts["temperature"]}
     if opts.get("seed") is not None:
         cfg["seed"] = opts["seed"]
     return cfg
@@ -433,8 +433,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--aspect-ratio", default="16:9")
     p.add_argument("--image-size", default="4K")
     p.add_argument("--image-model", default=IMAGE_MODEL, help=f"Image model (default {IMAGE_MODEL}; pass gemini-3.1-flash-image for cheaper/faster).")
-    p.add_argument("--temperature", type=float, default=1.4, help="Sampling temperature (placed high; gates how the render looks).")
-    p.add_argument("--top-p", type=float, default=0.97, help="Nucleus sampling cumulative probability.")
+    p.add_argument("--temperature", type=float, default=0.4, help="Sampling temperature (low = consistent, fewer content-filter trips).")
+    p.add_argument("--top-p", type=float, default=0.97, help="(Unused — top_p is not sent; temperature alone controls sampling.)")
     p.add_argument("--seed", type=int, default=42, help="Decoding seed for reproducibility (use --seed -1 to omit).")
     p.add_argument("--now", help="Override the current date/time string embedded in prompts (default: system clock).")
     p.add_argument("--max-turn", type=int, default=4, help="Run turns 1..N (default 4).")
@@ -476,8 +476,8 @@ def main() -> None:
     opts = {"temperature": args.temperature, "top_p": args.top_p,
             "seed": (None if args.seed is not None and args.seed < 0 else args.seed), "now": now_str,
             "image_model": args.image_model}
-    print(f"gen: thinking=high temperature={opts['temperature']} top_p={opts['top_p']} "
-          f"seed={opts['seed']} | now={now_str}")
+    print(f"gen: thinking=high temperature={opts['temperature']} top_p=off "
+          f"seed={opts['seed']} | image_model={opts['image_model']} | now={now_str}")
 
     print(f"=== {len(runs)} character(s) | turns 1..{args.max_turn} | concurrent (barrier/step) | "
           f"send={args.send} | delete={not args.no_delete} ===")
