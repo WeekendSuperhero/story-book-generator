@@ -273,15 +273,27 @@ def page_info(page: dict[str, Any]) -> str:
     return f"Page {page['pageNumber']}: {page.get('storyText','')} (characters: {who or 'none'})"
 
 
-def page_payload(story, page, prev_image: Path, prev_desc: str, present_resolved: list,
-                 opts, aspect_ratio: str, image_size: str) -> dict[str, Any]:
+def page_payload(story, page, prev_image, prev_desc: str, present_resolved: list,
+                 opts, aspect_ratio: str, image_size: str, chain_prev_id: str | None = None) -> dict[str, Any]:
+    """Build a page image request.
+
+    Two modes:
+      - default (chain_prev_id=None): a fresh call primed by attaching the previous page's image.
+      - chained (chain_prev_id set): links to the prior interaction via previous_interaction_id;
+        NO previous-page image is attached (continuity comes from the conversation history);
+        only the per-character sheet images are (re)attached each turn.
+    """
     child_ctx = any(detect_child(read_text(mat["description_path"]))
                     for _c, mat in present_resolved if mat.get("description_path"))
     fake_run = {"is_child": child_ctx}
+    continuity = ("Maintain visual continuity with the previous pages already in THIS conversation "
+                  "(same book, same art style, same character designs)."
+                  if chain_prev_id else
+                  "Maintain visual continuity with the attached previous page.")
     system = context_preamble(opts["now"]) + (
         "You render ONE full-page children's-book illustration in the comic-style house style. Keep "
         "every character IDENTICAL to their attached character sheet (face, hair, skin tone, "
-        "proportions, wardrobe). Maintain visual continuity with the attached previous page. Render "
+        "proportions, wardrobe). " + continuity + " Render "
         "the scene TEXT-FREE — no words, letters, signs, or captions. Keep faces, hands, and action "
         "out of the page's reserved text area and leave that area low-detail/uncluttered so text can "
         "be overlaid later — but do NOT draw any box, frame, rectangle, outline, label, caption, "
@@ -289,30 +301,38 @@ def page_payload(story, page, prev_image: Path, prev_desc: str, present_resolved
         "finished illustration art."
         + fidelity_clause(fake_run)
     )
-    blocks: list[dict[str, Any]] = [
-        text_block(f"Previous page (for visual continuity): {prev_desc}"),
-        text_block("Previous page image:"),
-        encode_image(prev_image),
-        text_block(
-            f"THIS PAGE to render — page {page['pageNumber']}.\n"
-            f"Story text (context only, do NOT draw it): {page.get('storyText','')}\n"
-            f"Illustration: {page.get('illustrationPrompt','')}\n"
-            f"Keep the {page.get('textZone','')} region uncluttered and low-detail for later text "
-            f"overlay — but draw NO box, label, or marking there; it must just be simpler art: "
-            f"{page.get('negativeSpaceInstruction','')}\n"
-            f"Avoid (do not render any of this): {page.get('imageNegativePrompt','')}"
-        ),
-    ]
+    blocks: list[dict[str, Any]] = []
+    if chain_prev_id:
+        blocks.append(text_block(
+            f"Continue the SAME storybook. The previous page was: {prev_desc}. Keep the identical art "
+            "style and character designs as the earlier pages in this conversation — do not restart."
+        ))
+    else:
+        blocks.append(text_block(f"Previous page (for visual continuity): {prev_desc}"))
+        blocks.append(text_block("Previous page image:"))
+        blocks.append(encode_image(prev_image))
+    blocks.append(text_block(
+        f"THIS PAGE to render — page {page['pageNumber']}.\n"
+        f"Story text (context only, do NOT draw it): {page.get('storyText','')}\n"
+        f"Illustration: {page.get('illustrationPrompt','')}\n"
+        f"Keep the {page.get('textZone','')} region uncluttered and low-detail for later text "
+        f"overlay — but draw NO box, label, or marking there; it must just be simpler art: "
+        f"{page.get('negativeSpaceInstruction','')}\n"
+        f"Avoid (do not render any of this): {page.get('imageNegativePrompt','')}"
+    ))
     for c, mat in present_resolved:
         blocks.append(text_block(
             f"Character in scene: {mat['name']} — expression: {c.get('expression','')}, "
             f"pose: {c.get('pose','')}, action: {c.get('action','')}. Keep identical to the sheets below."
         ))
         blocks += character_blocks(mat)
-    blocks.append(text_block(f"Render page {page['pageNumber']} now, text-free, on-model, continuous with the previous page."))
-    return {"model": opts["image_model"], "system_instruction": system, "generation_config": gen_config(opts),
-            "response_format": image_response_format(aspect_ratio, image_size), "store": True,
-            "input": blocks}
+    blocks.append(text_block(f"Render page {page['pageNumber']} now, text-free, on-model, continuous with the earlier pages."))
+    payload = {"model": opts["image_model"], "system_instruction": system, "generation_config": gen_config(opts),
+               "response_format": image_response_format(aspect_ratio, image_size), "store": True,
+               "input": blocks}
+    if chain_prev_id:
+        payload["previous_interaction_id"] = chain_prev_id
+    return payload
 
 
 def save_image_response(resp: dict[str, Any], path: Path) -> None:
@@ -325,10 +345,10 @@ def save_image_response(resp: dict[str, Any], path: Path) -> None:
 
 
 def create_image(payload: dict[str, Any], api_key, allow_proxy_auth, label: str,
-                 out_path: Path, run_log: Path, turn: int, tries: int = 3) -> None:
+                 out_path: Path, run_log: Path, turn: int, tries: int = 3) -> str | None:
     """Create an image interaction and save it, retrying if the model returns an empty
     response (occasional completed-but-no-image). Every attempt's id is logged so cleanup
-    still deletes orphaned attempts."""
+    still deletes orphaned attempts. Returns the successful interaction id (for chaining)."""
     last = ""
     for attempt in range(1, tries + 1):
         resp = create_interaction(payload, api_key, allow_proxy_auth, label=f"{label} try{attempt}")
@@ -337,7 +357,7 @@ def create_image(payload: dict[str, Any], api_key, allow_proxy_auth, label: str,
             log_id(run_log, turn, iid)
         try:
             save_image_response(resp, out_path)
-            return
+            return iid
         except RuntimeError as exc:
             last = str(exc)
             if attempt < tries:
@@ -361,7 +381,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42, help="Use -1 to omit.")
     p.add_argument("--now")
     p.add_argument("--canon-only", action="store_true", help="Stop after producing+validating story.json.")
-    p.add_argument("--pages", help="Only render these page numbers (e.g. 1,2,3). Default: all.")
+    p.add_argument("--chain", action="store_true", help="Chain title->page1->..->pageN via previous_interaction_id (no prev-page image; re-attach only the 2 sheets per character). Regenerates title + all pages in order.")
+    p.add_argument("--pages", help="Only render these page numbers (e.g. 1,2,3). Default: all. (Ignored with --chain.)")
     p.add_argument("--send", action="store_true")
     p.add_argument("--overwrite", action="store_true")
     p.add_argument("--no-delete", action="store_true")
@@ -438,6 +459,34 @@ def main() -> None:
     if args.canon_only:
         print("--canon-only: stopping after canon.")
         if not args.no_delete:
+            do_cleanup(run_log, api_key, args.allow_proxy_auth)
+        return
+
+    # --- Chained variant: title -> page1 -> ... -> pageN via previous_interaction_id ---
+    if args.chain:
+        print("\n== CHAINED RENDER (previous_interaction_id; sheets-only; no prev-page image) ==")
+        print("  TITLE PAGE attachments:")
+        print_manifest("title", [(None, m) for m in cast], [])
+        prev_id = create_image(title_payload(story, cast, opts, args.aspect_ratio, args.image_size),
+                               api_key, args.allow_proxy_auth, "title", title_path, run_log, -1)
+        print(f"Wrote {title_path} ({title_path.stat().st_size} bytes) id={str(prev_id)[:20]}...")
+        prev_desc = f"Title / cover of \"{story['book']['title']}\"."
+        for page in story["pages"]:
+            n = int(page["pageNumber"])
+            page_path = pages_dir / f"page-{n:03d}.jpg"
+            resolved, unresolved = resolve_present(page.get("charactersPresent", []), materials)
+            print(f"  page {n:03d} (chained on prev_id={str(prev_id)[:16]}...) attachments:")
+            print_manifest(f"page {n}", resolved, unresolved)
+            prev_id = create_image(
+                page_payload(story, page, None, prev_desc, resolved, opts, args.aspect_ratio,
+                             args.image_size, chain_prev_id=prev_id),
+                api_key, args.allow_proxy_auth, f"page {n}", page_path, run_log, n)
+            print(f"  page {n:03d}: wrote {page_path} ({page_path.stat().st_size} bytes)")
+            prev_desc = page_info(page)
+        print("\n== DONE (chained) ==")
+        if args.no_delete:
+            print(f"--no-delete: interactions kept (logged in {run_log}).")
+        else:
             do_cleanup(run_log, api_key, args.allow_proxy_auth)
         return
 
