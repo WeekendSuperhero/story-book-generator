@@ -28,12 +28,22 @@ CONTAINER_XML = """<?xml version="1.0" encoding="UTF-8"?>
 </container>
 """
 DEFAULT_TEXT_STYLE = {
-    "fontFamily": 'Georgia, "Times New Roman", serif',
+    "fontFamily": '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif',
     "fontWeight": "600",
+    "titleFontFamily": '"Great Vibes", "Brush Script MT", cursive',
     "lightColor": "#fffaf0",
     "darkColor": "#1f2933",
     "defaultColor": "#fffaf0",
 }
+# Embedded OFL fonts: (manifest id, filename, @font-face family, weight, style).
+# Body text uses Inter; the cover title lockup uses Great Vibes.
+EMBEDDED_FONTS = [
+    ("font-inter-400", "inter-400.woff2", "Inter", "400", "normal"),
+    ("font-inter-600", "inter-600.woff2", "Inter", "600", "normal"),
+    ("font-inter-700", "inter-700.woff2", "Inter", "700", "normal"),
+    ("font-great-vibes-400", "great-vibes-400.woff2", "Great Vibes", "400", "normal"),
+]
+DEFAULT_FONTS_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
 TEXT_BOX_FALLBACKS = {
     zone: (preset["x"], preset["y"], preset["width"], preset["height"])
     for zone, preset in TEXT_ZONE_PRESETS.items()
@@ -47,12 +57,14 @@ def merged_text_style(story: dict[str, Any], args: argparse.Namespace) -> dict[s
             configured.update(source)
 
     style = dict(DEFAULT_TEXT_STYLE)
-    for key in ["fontFamily", "fontWeight", "lightColor", "darkColor", "defaultColor"]:
+    for key in ["fontFamily", "fontWeight", "titleFontFamily", "lightColor", "darkColor", "defaultColor"]:
         if configured.get(key):
             style[key] = str(configured[key])
 
     if args.font_family:
         style["fontFamily"] = args.font_family
+    if getattr(args, "title_font_family", None):
+        style["titleFontFamily"] = args.title_font_family
     if args.font_weight:
         style["fontWeight"] = args.font_weight
     if args.light_text_color:
@@ -535,14 +547,32 @@ def title_page_xhtml(
 """
 
 
-def css(viewport_width: int, viewport_height: int, text_style: dict[str, str]) -> str:
+def font_face_css(font_faces: list[tuple[str, str, str, str]] | None) -> str:
+    """@font-face blocks for embedded fonts: list of (family, weight, style, filename)."""
+    out = ""
+    for family, weight, style, filename in (font_faces or []):
+        out += (
+            "@font-face {\n"
+            f'  font-family: "{family}";\n'
+            f"  font-style: {style};\n"
+            f"  font-weight: {weight};\n"
+            "  font-display: swap;\n"
+            f'  src: url("../fonts/{filename}") format("woff2");\n'
+            "}\n\n"
+        )
+    return out
+
+
+def css(viewport_width: int, viewport_height: int, text_style: dict[str, str],
+        font_faces: list[tuple[str, str, str, str]] | None = None) -> str:
     font_family = css_value(text_style["fontFamily"])
     font_weight = css_value(text_style["fontWeight"])
+    title_font_family = css_value(text_style.get("titleFontFamily", text_style["fontFamily"]))
     default_color = css_value(text_style["defaultColor"])
     title_font = max(1, round(viewport_width * 0.065))
     subtitle_font = max(1, round(viewport_width * 0.030))
     title_margin = max(1, round(viewport_width * 0.019))
-    return f"""html,
+    return font_face_css(font_faces) + f"""html,
 body {{
   margin: 0;
   padding: 0;
@@ -621,7 +651,7 @@ body {{
   bottom: 9%;
   z-index: 2;
   color: #fff;
-  font-family: {font_family};
+  font-family: {title_font_family};
   text-align: center;
   text-shadow:
     0 4px 11px rgba(0, 0, 0, 0.85),
@@ -695,6 +725,7 @@ def package_opf(
     modified: str,
     cover_image_name: str | None = None,
     spread: str = "none",
+    fonts: list[tuple[str, str, str, str, str]] | None = None,
 ) -> str:
     title = html.escape(story["book"]["title"])
     subtitle = story["book"].get("subtitle", "")
@@ -733,6 +764,11 @@ def package_opf(
             f'    <item id="cover-image" href="images/{html.escape(cover_image_name)}" '
             f'media-type="{media_type(Path(cover_image_name))}" properties="cover-image"/>'
         )
+    for font_id, filename, *_rest in (fonts or []):
+        manifest.append(
+            f'    <item id="{font_id}" href="fonts/{html.escape(filename)}" media-type="font/woff2"/>'
+        )
+
     # Title is the first recto (right-hand) page, alone; then pages pair up left/right so the
     # reader shows two pages per spread (page N: left when odd, right when even).
     spine = ['    <itemref idref="title-page" properties="page-spread-right"/>']
@@ -850,7 +886,10 @@ def parse_args() -> argparse.Namespace:
         help="Min body font as %% of viewport width (default 1.5).",
     )
     parser.add_argument("--font-scale", type=float, default=1.0)
-    parser.add_argument("--font-family")
+    parser.add_argument("--font-family", help="Body font-family CSS (default: embedded Inter stack).")
+    parser.add_argument("--title-font-family", help="Cover title font-family CSS (default: embedded Great Vibes stack).")
+    parser.add_argument("--fonts-dir", type=Path, default=DEFAULT_FONTS_DIR,
+                        help="Directory holding the embedded font files (default: assets/fonts).")
     parser.add_argument("--font-weight")
     parser.add_argument("--light-text-color")
     parser.add_argument("--dark-text-color")
@@ -886,6 +925,11 @@ def main() -> None:
     # Dedicated cover: --cover-image, else <images-dir>/../title_page.jpg if present.
     cover_path = args.cover_image or (args.images_dir.parent / "title_page.jpg")
     cover_name = cover_path.name if cover_path.exists() else None
+
+    # Embedded fonts present in --fonts-dir (Inter body + Great Vibes title).
+    available_fonts = [(fid, fn, fam, w, st) for (fid, fn, fam, w, st) in EMBEDDED_FONTS
+                       if (args.fonts_dir / fn).exists()]
+    font_faces = [(fam, w, st, fn) for (_fid, fn, fam, w, st) in available_fonts]
     if len(set(sizes)) != 1:
         raise ValueError(f"All page images must have the same dimensions; found {sorted(set(sizes))}")
     viewport_width, viewport_height = sizes[0]
@@ -918,10 +962,15 @@ def main() -> None:
     if cover_name:
         shutil.copy2(cover_path, args.build_dir / "EPUB" / "images" / cover_name)
 
+    if available_fonts:
+        (args.build_dir / "EPUB" / "fonts").mkdir(parents=True, exist_ok=True)
+        for _fid, fn, *_rest in available_fonts:
+            shutil.copy2(args.fonts_dir / fn, args.build_dir / "EPUB" / "fonts" / fn)
+
     (args.build_dir / "mimetype").write_text(EPUB_MIME, encoding="ascii")
     (args.build_dir / "META-INF" / "container.xml").write_text(CONTAINER_XML, encoding="utf-8")
     (args.build_dir / "EPUB" / "styles" / "book.css").write_text(
-        css(viewport_width, viewport_height, text_style),
+        css(viewport_width, viewport_height, text_style, font_faces=font_faces),
         encoding="utf-8",
     )
     (args.build_dir / "EPUB" / "nav.xhtml").write_text(
@@ -930,7 +979,7 @@ def main() -> None:
     )
     (args.build_dir / "EPUB" / "package.opf").write_text(
         package_opf(story, image_files, args.language, identifier, modified,
-                    cover_image_name=cover_name, spread=args.spread),
+                    cover_image_name=cover_name, spread=args.spread, fonts=available_fonts),
         encoding="utf-8",
     )
     (args.build_dir / "EPUB" / "pages" / "title.xhtml").write_text(
