@@ -251,7 +251,8 @@ def title_payload(story: dict[str, Any], cast: list[dict[str, Any]], opts: dict[
     system = context_preamble(opts["now"]) + (
         "You render the TITLE-PAGE / cover illustration for a children's book in the comic-style "
         "house style. Feature the main cast together in an inviting establishing scene, on-model "
-        "with the attached character sheets. Render it strictly TEXT-FREE: NO title, letters, words, "
+        "with the attached character sheets. No duplicated characters — each character appears "
+        "EXACTLY ONCE (never clone, twin, mirror, or repeat a character). Render it strictly TEXT-FREE: NO title, letters, words, "
         "numbers, signs, posters, labels, banners, book covers, papers, or any readable text on props "
         "or clothing. Leave a clean, low-detail area near the top or center for the title to be "
         "overlaid later, but do NOT draw any box, frame, or placeholder there."
@@ -293,7 +294,8 @@ def page_payload(story, page, prev_image, prev_desc: str, present_resolved: list
     system = context_preamble(opts["now"]) + (
         "You render ONE full-page children's-book illustration in the comic-style house style. Keep "
         "every character IDENTICAL to their attached character sheet (face, hair, skin tone, "
-        "proportions, wardrobe). " + continuity + " Render "
+        "proportions, wardrobe). No duplicated characters — each character present appears EXACTLY "
+        "ONCE; never clone, twin, mirror, or repeat any character anywhere in the image. " + continuity + " Render "
         "the scene TEXT-FREE — no words, letters, signs, or captions. Keep faces, hands, and action "
         "out of the page's reserved text area and leave that area low-detail/uncluttered so text can "
         "be overlaid later — but do NOT draw any box, frame, rectangle, outline, label, caption, "
