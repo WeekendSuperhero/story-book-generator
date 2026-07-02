@@ -75,9 +75,10 @@ Output ONLY the JSON object — no prose, no markdown, no code fences.
 # ---- material loading -------------------------------------------------------
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
-# The 4 materials every referenced character must contribute, in attach order.
-ATTACH_ORDER = [("description", "description_path"), ("styles_md", "styles_path"),
-                ("character_sheet", "sheet_path"), ("styles_sheet", "styles_sheet_path")]
+# For storybook image turns (title + pages) each referenced character contributes ONLY its two
+# sheet images — the character sheet and the styles sheet. The description.md / styles.md text is
+# intentionally NOT attached to the picture turns (the sheets carry the visual canon).
+ATTACH_ORDER = [("character_sheet", "sheet_path"), ("styles_sheet", "styles_sheet_path")]
 
 
 def _ci_find(directory: Path, predicate) -> Path | None:
