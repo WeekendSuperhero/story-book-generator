@@ -31,6 +31,7 @@ DEFAULT_TEXT_STYLE = {
     "fontFamily": '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif',
     "fontWeight": "600",
     "titleFontFamily": '"Great Vibes", "Brush Script MT", cursive',
+    "titleAnchor": "top",
     "lightColor": "#fffaf0",
     "darkColor": "#1f2933",
     "defaultColor": "#fffaf0",
@@ -57,7 +58,7 @@ def merged_text_style(story: dict[str, Any], args: argparse.Namespace) -> dict[s
             configured.update(source)
 
     style = dict(DEFAULT_TEXT_STYLE)
-    for key in ["fontFamily", "fontWeight", "titleFontFamily", "lightColor", "darkColor", "defaultColor"]:
+    for key in ["fontFamily", "fontWeight", "titleFontFamily", "titleAnchor", "lightColor", "darkColor", "defaultColor"]:
         if configured.get(key):
             style[key] = str(configured[key])
 
@@ -65,6 +66,8 @@ def merged_text_style(story: dict[str, Any], args: argparse.Namespace) -> dict[s
         style["fontFamily"] = args.font_family
     if getattr(args, "title_font_family", None):
         style["titleFontFamily"] = args.title_font_family
+    if getattr(args, "title_anchor", None):
+        style["titleAnchor"] = args.title_anchor
     if args.font_weight:
         style["fontWeight"] = args.font_weight
     if args.light_text_color:
@@ -568,6 +571,13 @@ def css(viewport_width: int, viewport_height: int, text_style: dict[str, str],
     font_family = css_value(text_style["fontFamily"])
     font_weight = css_value(text_style["fontWeight"])
     title_font_family = css_value(text_style.get("titleFontFamily", text_style["fontFamily"]))
+    anchor = text_style.get("titleAnchor", "top")
+    if anchor == "center":
+        title_pos = "top: 50%;\n  transform: translateY(-50%);"
+    elif anchor == "bottom":
+        title_pos = "bottom: 9%;"
+    else:
+        title_pos = "top: 7%;"
     default_color = css_value(text_style["defaultColor"])
     title_font = max(1, round(viewport_width * 0.065))
     subtitle_font = max(1, round(viewport_width * 0.030))
@@ -648,7 +658,7 @@ body {{
   position: absolute;
   left: 9%;
   right: 9%;
-  bottom: 9%;
+  {title_pos}
   z-index: 2;
   color: #fff;
   font-family: {title_font_family};

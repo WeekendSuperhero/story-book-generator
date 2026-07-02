@@ -66,7 +66,10 @@ def largest_empty_rect(blocked: np.ndarray) -> tuple[int, int, int, int, int]:
 
 # ---- color: dominant color + contrasting choice -------------------------------
 
-def dominant_color(image: Image.Image, box_pct: tuple[float, float, float, float]) -> tuple[int, int, int]:
+def region_colors(image: Image.Image, box_pct: tuple[float, float, float, float]):
+    """Return (dominant_rgb, mean_rgb) for the box. Dominant = most frequent quantized color
+    (the 'most prominent' hue); mean = average color (robust for the light/dark decision on a
+    multi-tone strip, where a single dominant bin can be misleading)."""
     w, h = image.size
     x, y, bw, bh = box_pct
     left, top = int(x / 100 * w), int(y / 100 * h)
@@ -74,10 +77,11 @@ def dominant_color(image: Image.Image, box_pct: tuple[float, float, float, float
     crop = image.crop((left, top, max(right, left + 1), max(bottom, top + 1))).convert("RGB")
     crop = crop.resize((64, 36))
     arr = np.asarray(crop).reshape(-1, 3)
+    mean = tuple(int(v) for v in arr.mean(axis=0))
     quant = (arr // 24 * 24 + 12).astype(np.uint8)          # coarse quantize
     colors, counts = np.unique(quant, axis=0, return_counts=True)
     r, g, b = colors[counts.argmax()]
-    return int(r), int(g), int(b)
+    return (int(r), int(g), int(b)), mean
 
 
 def rel_luminance(rgb: tuple[int, int, int]) -> float:
@@ -126,8 +130,11 @@ def mask_for(page_no: int, masks_dir: Path, images_dir: Path, model: str, sessio
     return Image.open(__import__("io").BytesIO(data)).convert("L")
 
 
-def choose_box(mask: Image.Image, zone: str, requested: dict) -> tuple[tuple[float, float, float, float], float]:
-    """Largest empty rect within the requested zone's band. Returns (x,y,w,h %), coverage."""
+def choose_box(mask: Image.Image, zone: str, requested: dict,
+               bottom_margin: float, max_text_h: float):
+    """Largest empty rect within the requested zone, then ANCHOR the text to the bottom edge
+    (~bottom_margin from the page bottom) so it hugs the bottom instead of floating in a tall
+    empty area. Returns (box (x,y,w,h %), coverage_or_None, verticalAlign, is_fallback)."""
     band = ZONE_BANDS.get(zone, ZONE_BANDS["bottom"])
     small = np.asarray(mask.resize((GRID_W, GRID_H)))
     character = small > BLOCK_THRESHOLD
@@ -138,14 +145,28 @@ def choose_box(mask: Image.Image, zone: str, requested: dict) -> tuple[tuple[flo
     blocked[by0:by1, bx0:bx1] = character[by0:by1, bx0:bx1]  # empty only inside the band
 
     area, r0, c0, r1, c1 = largest_empty_rect(blocked)
-    if area == 0:
-        return None, 1.0
-    x = c0 / GRID_W * 100
-    y = r0 / GRID_H * 100
-    w = (c1 - c0 + 1) / GRID_W * 100
-    h = (r1 - r0 + 1) / GRID_H * 100
-    coverage = float(character[r0:r1 + 1, c0:c1 + 1].mean())
-    return (round(x, 1), round(y, 1), round(w, 1), round(h, 1)), coverage
+    if area > 0:
+        x = c0 / GRID_W * 100
+        w = (c1 - c0 + 1) / GRID_W * 100
+        rect_top = r0 / GRID_H * 100
+        rect_bottom = (r1 + 1) / GRID_H * 100
+        coverage = float(character[r0:r1 + 1, c0:c1 + 1].mean())
+        if w >= MIN_W_PCT and (rect_bottom - rect_top) >= MIN_H_PCT:
+            if zone == "bottom":
+                box_bottom = min(rect_bottom, 100.0 - bottom_margin)   # hug the page bottom
+                box_top = max(rect_top, box_bottom - max_text_h)       # snug strip within the clear area
+                return (round(x, 1), round(box_top, 1), round(w, 1), round(box_bottom - box_top, 1)), coverage, "bottom", False
+            return (round(x, 1), round(rect_top, 1), round(w, 1), round(rect_bottom - rect_top, 1)), coverage, requested.get("verticalAlign", "middle"), False
+
+    # Fallback: a bottom strip (still hugging the bottom), even if the mid-zone was occupied.
+    if zone == "bottom":
+        top = max(0.0, 100.0 - bottom_margin - max_text_h)
+        return (4.0, round(top, 1), 92.0, round(100.0 - bottom_margin - top, 1)), None, "bottom", True
+    rx, ry = requested.get("xPercent"), requested.get("yPercent")
+    rw, rh = requested.get("widthPercent"), requested.get("heightPercent")
+    if None not in (rx, ry, rw, rh):
+        return (rx, ry, rw, rh), None, requested.get("verticalAlign", "middle"), True
+    return (4.0, 78.0, 92.0, 18.0), None, "bottom", True
 
 
 def parse_args() -> argparse.Namespace:
@@ -155,6 +176,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--masks-dir", type=Path, default=Path("outputs/story/segmentation/birefnet-general"))
     p.add_argument("--model", default="birefnet-general", help="rembg model if a mask is missing.")
     p.add_argument("--out", type=Path, default=Path("outputs/story/layout_overrides.json"))
+    p.add_argument("--bottom-margin", type=float, default=3.5,
+                   help="Gap (%% of page height) between the text and the page bottom (snug to the bottom).")
+    p.add_argument("--max-text-height", type=float, default=17.0,
+                   help="Max height (%%) of the bottom text strip.")
     p.add_argument("--pages", help="Only these page numbers, e.g. 1,6,12.")
     p.add_argument("--write", action="store_true", help="Write layout_overrides.json (else dry-run).")
     return p.parse_args()
@@ -177,7 +202,7 @@ def main() -> None:
             overrides = {"pages": {}}
 
     print(f"model={args.model} masks={args.masks_dir} | palette light={candidates['light']} dark={candidates['dark']}")
-    print(f"{'page':>4}  {'zone':<7} {'chosen box (x,y,w,h %)':<26} {'cover':>6}  {'dominant':<9} {'text':<9} {'contrast':>8}  note")
+    print(f"{'page':>4}  {'zone':<7} {'chosen box (x,y,w,h %)':<26} {'cover':>6}  {'domin.':<9}{'mean':<9} {'text':<9} {'contrast':>8}  note")
     for page in story["pages"]:
         n = int(page["pageNumber"])
         if selected is not None and n not in selected:
@@ -185,34 +210,29 @@ def main() -> None:
         zone = page.get("textZone", "bottom")
         requested = page.get("textPlacement", {})
         mask = mask_for(n, args.masks_dir, args.images_dir, args.model, session_holder)
-        box, coverage = choose_box(mask, zone, requested)
-
-        note = ""
-        if box is None or box[2] < MIN_W_PCT or box[3] < MIN_H_PCT:
-            # No usable empty rectangle in the zone -> keep the story's requested placement.
-            rx = requested.get("xPercent"); ry = requested.get("yPercent")
-            rw = requested.get("widthPercent"); rh = requested.get("heightPercent")
-            box = (rx, ry, rw, rh) if None not in (rx, ry, rw, rh) else box
-            note = "fallback: requested placement (zone too occupied)"
+        box, coverage, valign, is_fallback = choose_box(mask, zone, requested, args.bottom_margin, args.max_text_height)
+        note = "fallback: bottom strip (zone occupied)" if is_fallback else ""
 
         image = Image.open(args.images_dir / f"page-{n:03d}.jpg").convert("RGB")
-        dom = dominant_color(image, box) if box and None not in box else (0, 0, 0)
-        text_hex, cr = pick_contrasting(dom, candidates)
+        dom, mean = region_colors(image, box)
+        text_hex, cr = pick_contrasting(mean, candidates)   # decide by mean luminance (robust)
         if cr < 3.0:
             note = (note + "; " if note else "") + "low contrast -> scrim recommended"
 
         placement = {
             "xPercent": box[0], "yPercent": box[1], "widthPercent": box[2], "heightPercent": box[3],
             "textAlign": requested.get("textAlign", "center"),
-            "verticalAlign": requested.get("verticalAlign", "middle"),
+            "verticalAlign": valign,
             "fontRole": requested.get("fontRole", "body"),
-            "colorRecommendation": requested.get("colorRecommendation", ""),
+            "colorRecommendation": text_hex,
         }
         overrides["pages"][str(n)] = {"textPlacement": placement, "textColor": text_hex}
 
         dom_hex = "#%02x%02x%02x" % dom
-        boxs = f"({box[0]},{box[1]},{box[2]},{box[3]})" if box and None not in box else "(none)"
-        print(f"{n:>4}  {zone:<7} {boxs:<26} {coverage*100:5.1f}%  {dom_hex:<9} {text_hex:<9} {cr:7.2f}:1  {note}")
+        mean_hex = "#%02x%02x%02x" % mean
+        cov = f"{coverage * 100:5.1f}%" if coverage is not None else "   -  "
+        boxs = f"({box[0]},{box[1]},{box[2]},{box[3]})"
+        print(f"{n:>4}  {zone:<7} {boxs:<26} {cov}  {dom_hex:<9}{mean_hex:<9} {text_hex:<9} {cr:7.2f}:1  {note}")
 
     if args.write:
         args.out.parent.mkdir(parents=True, exist_ok=True)
