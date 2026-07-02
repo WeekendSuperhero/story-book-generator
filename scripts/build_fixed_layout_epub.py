@@ -823,9 +823,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--spread",
         choices=["none", "auto", "both", "landscape", "portrait"],
-        default="both",
-        help="rendition:spread. 'both' = two pages per spread (title alone on the right, then "
-             "left/right pairs). 'none' = one page at a time (legacy).",
+        default="none",
+        help="rendition:spread (default 'none' = one full landscape page at a time). 'both' = two "
+             "pages per spread (title alone on the right, then left/right pairs).",
     )
     parser.add_argument(
         "--max-font-size",
