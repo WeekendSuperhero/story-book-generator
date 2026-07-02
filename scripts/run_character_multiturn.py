@@ -300,14 +300,23 @@ def build_payload(step: int, run: dict[str, Any], aspect_ratio: str, image_size:
         "STYLES.md wardrobe you wrote."
         + fidelity_clause(run)
     )
+    blocks: list[dict[str, Any]] = []
+    canon = run["paths"][3]  # the character sheet produced in turn 3
+    if canon.exists():
+        blocks.append(text_block(
+            f"Attached is {name}'s just-generated CANON reference sheet. The style/wardrobe sheet MUST keep "
+            "the face, hair, skin tone, body, and proportions IDENTICAL to this exact sheet:"
+        ))
+        blocks.append(encode_image(canon))
+    blocks.append(text_block(
+        f"Render {name}'s style/wardrobe sheet now — same person as the attached canon sheet, identity "
+        "identical, using the clothing images only as dress inspiration."
+    ))
     return {"model": opts["image_model"], "previous_interaction_id": prev, "system_instruction": system,
             "generation_config": cfg,
             "response_format": image_response_format(aspect_ratio, image_size),
             "store": True,
-            "input": [text_block(
-                f"Render {name}'s style/wardrobe sheet now — same person as the canon sheet above, "
-                "identity identical, using the clothing images only as dress inspiration."
-            )]}
+            "input": blocks}
 
 
 STEP_KIND = {1: "text", 2: "text", 3: "image", 4: "image"}
@@ -392,13 +401,19 @@ def print_char_manifest(run: dict[str, Any], args) -> None:
         rows.append((1, "facts", run["facts_path"]))
     rows += [(1, "reference_cutout", p) for p in run["reference_images"]]
     rows += [(2, "styles_cutout", p) for p in run["styles_images"]]
+    rows.append((4, "canon_sheet(from turn3)", run["paths"][3]))
     log(f"  [{name}] files sent over per turn (name <- path):")
     for turn in range(1, args.max_turn + 1):
         turn_rows = [r for r in rows if r[0] == turn]
         if turn_rows:
             for _t, kind, path in turn_rows:
-                exists = "" if path.exists() else "  !! MISSING"
-                log(f"    turn {turn} {STEP_LABEL[turn]:<12} {kind:<18} <- {path}{exists}")
+                if path.exists():
+                    note = ""
+                elif kind.startswith("canon_sheet"):
+                    note = "  (produced in turn 3 during this run)"
+                else:
+                    note = "  !! MISSING"
+                log(f"    turn {turn} {STEP_LABEL[turn]:<12} {kind:<22} <- {path}{note}")
         else:
             log(f"    turn {turn} {STEP_LABEL[turn]:<12} (no new files — reuses prior turns via previous_interaction_id)")
     log(f"    [{name}] => turn1: {3 + (1 if run.get('facts_path') else 0) + len(run['reference_images'])} file(s), "
