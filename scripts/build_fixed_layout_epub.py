@@ -694,6 +694,7 @@ def package_opf(
     identifier: str,
     modified: str,
     cover_image_name: str | None = None,
+    spread: str = "both",
 ) -> str:
     title = html.escape(story["book"]["title"])
     subtitle = story["book"].get("subtitle", "")
@@ -714,7 +715,7 @@ def package_opf(
             f"    <meta property=\"dcterms:modified\">{modified}</meta>",
             "    <meta property=\"rendition:layout\">pre-paginated</meta>",
             "    <meta property=\"rendition:orientation\">landscape</meta>",
-            "    <meta property=\"rendition:spread\">none</meta>",
+            f"    <meta property=\"rendition:spread\">{spread}</meta>",
         ]
     )
     if cover_image_name:
@@ -732,18 +733,21 @@ def package_opf(
             f'    <item id="cover-image" href="images/{html.escape(cover_image_name)}" '
             f'media-type="{media_type(Path(cover_image_name))}" properties="cover-image"/>'
         )
-    spine = ['    <itemref idref="title-page"/>']
+    # Title is the first recto (right-hand) page, alone; then pages pair up left/right so the
+    # reader shows two pages per spread (page N: left when odd, right when even).
+    spine = ['    <itemref idref="title-page" properties="page-spread-right"/>']
     for page, image_file in zip(story["pages"], image_files, strict=True):
         page_number = int(page["pageNumber"])
         # Only fall back to page 1 for cover-image if there is no dedicated cover.
         image_properties = ' properties="cover-image"' if (cover_image_name is None and page_number == 1) else ""
+        spread_side = "page-spread-left" if page_number % 2 == 1 else "page-spread-right"
         manifest.append(
             f'    <item id="page-{page_number:03d}" href="pages/page-{page_number:03d}.xhtml" media-type="application/xhtml+xml"/>'
         )
         manifest.append(
             f'    <item id="img-{page_number:03d}" href="images/{html.escape(image_file.name)}" media-type="{media_type(image_file)}"{image_properties}/>'
         )
-        spine.append(f'    <itemref idref="page-{page_number:03d}"/>')
+        spine.append(f'    <itemref idref="page-{page_number:03d}" properties="{spread_side}"/>')
 
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <package version="3.0"
@@ -816,6 +820,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--build-dir", type=Path, default=Path("outputs/epub_build"))
     parser.add_argument("--out", type=Path)
     parser.add_argument("--language", default="en")
+    parser.add_argument(
+        "--spread",
+        choices=["none", "auto", "both", "landscape", "portrait"],
+        default="both",
+        help="rendition:spread. 'both' = two pages per spread (title alone on the right, then "
+             "left/right pairs). 'none' = one page at a time (legacy).",
+    )
     parser.add_argument(
         "--max-font-size",
         type=int,
@@ -918,7 +929,8 @@ def main() -> None:
         encoding="utf-8",
     )
     (args.build_dir / "EPUB" / "package.opf").write_text(
-        package_opf(story, image_files, args.language, identifier, modified, cover_image_name=cover_name),
+        package_opf(story, image_files, args.language, identifier, modified,
+                    cover_image_name=cover_name, spread=args.spread),
         encoding="utf-8",
     )
     (args.build_dir / "EPUB" / "pages" / "title.xhtml").write_text(
