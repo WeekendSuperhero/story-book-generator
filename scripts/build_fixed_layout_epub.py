@@ -693,6 +693,7 @@ def package_opf(
     language: str,
     identifier: str,
     modified: str,
+    cover_image_name: str | None = None,
 ) -> str:
     title = html.escape(story["book"]["title"])
     subtitle = story["book"].get("subtitle", "")
@@ -716,16 +717,26 @@ def package_opf(
             "    <meta property=\"rendition:spread\">none</meta>",
         ]
     )
+    if cover_image_name:
+        # Legacy EPUB 2 cover hint (Kindle / older reading systems still read this).
+        metadata_lines.append('    <meta name="cover" content="cover-image"/>')
 
     manifest = [
         '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
         '    <item id="css" href="styles/book.css" media-type="text/css"/>',
         '    <item id="title-page" href="pages/title.xhtml" media-type="application/xhtml+xml"/>',
     ]
+    if cover_image_name:
+        # Dedicated cover image carries the EPUB 3 cover-image property (at most one item may).
+        manifest.append(
+            f'    <item id="cover-image" href="images/{html.escape(cover_image_name)}" '
+            f'media-type="{media_type(Path(cover_image_name))}" properties="cover-image"/>'
+        )
     spine = ['    <itemref idref="title-page"/>']
     for page, image_file in zip(story["pages"], image_files, strict=True):
         page_number = int(page["pageNumber"])
-        image_properties = ' properties="cover-image"' if page_number == 1 else ""
+        # Only fall back to page 1 for cover-image if there is no dedicated cover.
+        image_properties = ' properties="cover-image"' if (cover_image_name is None and page_number == 1) else ""
         manifest.append(
             f'    <item id="page-{page_number:03d}" href="pages/page-{page_number:03d}.xhtml" media-type="application/xhtml+xml"/>'
         )
@@ -794,6 +805,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--story", type=Path, default=Path("outputs/story.json"))
     parser.add_argument("--images-dir", type=Path, default=Path("outputs/page_images"))
+    parser.add_argument(
+        "--cover-image",
+        type=Path,
+        help="Dedicated cover illustration (default: <images-dir>/../title_page.jpg if present). "
+             "Used as the EPUB cover (properties=\"cover-image\" + legacy <meta name=cover>) and the "
+             "title page. If absent, page 1 is used as the cover (legacy behavior).",
+    )
     parser.add_argument("--layout-overrides", type=Path, default=Path("outputs/layout_overrides.json"))
     parser.add_argument("--build-dir", type=Path, default=Path("outputs/epub_build"))
     parser.add_argument("--out", type=Path)
@@ -853,6 +871,10 @@ def main() -> None:
 
     image_files = [find_page_image(args.images_dir, int(page["pageNumber"])) for page in pages]
     sizes = [image_size(path) for path in image_files]
+
+    # Dedicated cover: --cover-image, else <images-dir>/../title_page.jpg if present.
+    cover_path = args.cover_image or (args.images_dir.parent / "title_page.jpg")
+    cover_name = cover_path.name if cover_path.exists() else None
     if len(set(sizes)) != 1:
         raise ValueError(f"All page images must have the same dimensions; found {sorted(set(sizes))}")
     viewport_width, viewport_height = sizes[0]
@@ -882,6 +904,9 @@ def main() -> None:
     (args.build_dir / "EPUB" / "images").mkdir(parents=True)
     (args.build_dir / "EPUB" / "styles").mkdir(parents=True)
 
+    if cover_name:
+        shutil.copy2(cover_path, args.build_dir / "EPUB" / "images" / cover_name)
+
     (args.build_dir / "mimetype").write_text(EPUB_MIME, encoding="ascii")
     (args.build_dir / "META-INF" / "container.xml").write_text(CONTAINER_XML, encoding="utf-8")
     (args.build_dir / "EPUB" / "styles" / "book.css").write_text(
@@ -893,13 +918,13 @@ def main() -> None:
         encoding="utf-8",
     )
     (args.build_dir / "EPUB" / "package.opf").write_text(
-        package_opf(story, image_files, args.language, identifier, modified),
+        package_opf(story, image_files, args.language, identifier, modified, cover_image_name=cover_name),
         encoding="utf-8",
     )
     (args.build_dir / "EPUB" / "pages" / "title.xhtml").write_text(
         title_page_xhtml(
             story,
-            image_files[0].name,
+            cover_name or image_files[0].name,
             viewport_width,
             viewport_height,
             args.language,
