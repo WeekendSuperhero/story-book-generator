@@ -350,7 +350,7 @@ def build_run(name: str, characters_dir: Path, skill: str, character_template: s
         "name": name, "cid": cid, "char_dir": char_dir,
         "run_log": Path("outputs/multiturn") / f"{cid}-run.json",
         "skill": skill, "character_template": character_template, "styles_template": styles_template,
-        "facts": facts_text, "is_child": detect_child(facts_text),
+        "facts": facts_text, "facts_path": facts_file, "is_child": detect_child(facts_text),
         "reference_images": reference_images, "styles_images": styles_images,
         "prev_id": None, "created_ids": [], "failed": False, "error": None,
         "paths": {
@@ -377,6 +377,32 @@ def step_worker(run: dict[str, Any], step: int, api_key: str | None, allow_proxy
     except Exception as exc:  # noqa: BLE001 - report and continue with other characters
         log(f"  [{run['name']}] step {step} FAILED: {type(exc).__name__}: {exc}")
         return run, False, f"step {step}: {exc}"
+
+
+def print_char_manifest(run: dict[str, Any], args) -> None:
+    """Show exactly which files each turn sends over (name <- path), for confirmation."""
+    name = run["name"]
+    # (turn, kind, path) for every file attached; turns 3/4 add no new files (they reuse history).
+    rows: list[tuple[int, str, Path]] = [
+        (1, "character_template", args.character_template),
+        (1, "styles_template", args.styles_template),
+        (1, "comic_skill", args.skill),
+    ]
+    if run.get("facts_path"):
+        rows.append((1, "facts", run["facts_path"]))
+    rows += [(1, "reference_cutout", p) for p in run["reference_images"]]
+    rows += [(2, "styles_cutout", p) for p in run["styles_images"]]
+    log(f"  [{name}] files sent over per turn (name <- path):")
+    for turn in range(1, args.max_turn + 1):
+        turn_rows = [r for r in rows if r[0] == turn]
+        if turn_rows:
+            for _t, kind, path in turn_rows:
+                exists = "" if path.exists() else "  !! MISSING"
+                log(f"    turn {turn} {STEP_LABEL[turn]:<12} {kind:<18} <- {path}{exists}")
+        else:
+            log(f"    turn {turn} {STEP_LABEL[turn]:<12} (no new files — reuses prior turns via previous_interaction_id)")
+    log(f"    [{name}] => turn1: {3 + (1 if run.get('facts_path') else 0) + len(run['reference_images'])} file(s), "
+        f"turn2: {len(run['styles_images'])} file(s)")
 
 
 # ---- main -------------------------------------------------------------------
@@ -443,7 +469,12 @@ def main() -> None:
     for run in runs:
         print(f"  {run['name']:<10} ref={len(run['reference_images'])} styles={len(run['styles_images'])} -> {run['run_log']}")
     for step in range(1, args.max_turn + 1):
-        print(f"  step {step}: {STEP_LABEL[step]} ({TEXT_MODEL if STEP_KIND[step]=='text' else IMAGE_MODEL})")
+        model = TEXT_MODEL if STEP_KIND[step] == "text" else args.image_model
+        print(f"  step {step}: {STEP_LABEL[step]} ({model})")
+
+    print("\n-- attachment manifest (files sent over per turn) --")
+    for run in runs:
+        print_char_manifest(run, args)
 
     if not args.send:
         print("\n[dry-run] pass --send to execute.")
